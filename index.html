@@ -1,0 +1,4353 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F3F7FD">
+<meta name="description" content="个人工作记录：本地保存名称、数量与人民币单价，自动计算金额并按日期、月份和名称统计。">
+<title>工作记录 · 本地金额统计</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#F3F7FD;
+  --card:#FFFFFF;
+  --primary:#2878E5;
+  --primary-dark:#1D63C6;
+  --primary-soft:#EAF2FF;
+  --primary-line:#D7E7FD;
+  --title:#18365D;
+  --text:#52647A;
+  --muted:#94A3B8;
+  --line:#E6EEF9;
+  --line-strong:#DCE8F6;
+  --danger:#D45454;
+  --danger-dark:#B83F3F;
+  --danger-soft:#FFF0F0;
+  --success:#1F9D77;
+  --success-soft:#EAF8F3;
+  --radius:18px;
+  --shadow:0 8px 24px rgba(31,77,134,.06), 0 1px 3px rgba(31,77,134,.04);
+  --shadow-strong:0 14px 38px rgba(25,64,116,.14);
+  --safe-bottom:env(safe-area-inset-bottom, 0px);
+  --safe-top:env(safe-area-inset-top, 0px);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{
+  margin:0;
+  min-width:320px;
+  min-height:100vh;
+  min-height:100dvh;
+  overflow-x:hidden;
+  background:
+    radial-gradient(1100px 420px at 18% -160px, rgba(199,226,255,.55), transparent 70%),
+    radial-gradient(800px 360px at 105% 0, rgba(220,238,255,.44), transparent 72%),
+    var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+body.modal-open{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:disabled{cursor:not-allowed}
+input,select,textarea{min-width:0}
+img,svg{display:block}
+h1,h2,h3,p{margin:0}
+[hidden]{display:none !important}
+::selection{background:#CFE4FF;color:var(--title)}
+:focus-visible{outline:3px solid rgba(40,120,229,.28);outline-offset:2px}
+.tabular{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.icon{width:20px;height:20px;flex:0 0 auto;pointer-events:none}
+.icon-sm{width:17px;height:17px}
+.icon-lg{width:24px;height:24px}
+.svg-sprite{position:absolute;width:0;height:0;overflow:hidden}
+.sr-only{
+  position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;
+  overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
+}
+
+/* ---------- Boot / fatal ---------- */
+.boot-screen,.fatal-screen{
+  position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:var(--bg);
+}
+.boot-inner{display:flex;flex-direction:column;align-items:center;gap:16px;color:var(--muted);font-size:14px}
+.boot-logo{
+  width:58px;height:58px;border-radius:18px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(145deg,#4A98F8,#1E67CE);box-shadow:0 14px 30px rgba(40,120,229,.25)
+}
+.spinner{
+  width:22px;height:22px;border-radius:50%;border:2.5px solid #D5E5FA;border-top-color:var(--primary);
+  animation:spin .8s linear infinite
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fatal-card{
+  width:min(440px,100%);background:#fff;border:1px solid var(--line);border-radius:22px;
+  box-shadow:var(--shadow-strong);padding:28px;text-align:center
+}
+.fatal-icon{
+  width:56px;height:56px;margin:0 auto 16px;border-radius:16px;display:grid;place-items:center;
+  background:var(--danger-soft);color:var(--danger)
+}
+.fatal-card h2{font-size:20px;color:var(--title);margin-bottom:8px}
+.fatal-card p{font-size:14px;color:var(--text);line-height:1.7;margin-bottom:20px;overflow-wrap:anywhere}
+
+/* ---------- App shell ---------- */
+.app{min-height:100vh;min-height:100dvh}
+.topbar{
+  position:sticky;top:0;z-index:30;
+  padding-top:var(--safe-top);
+  background:rgba(243,247,253,.88);
+  border-bottom:1px solid rgba(214,229,247,.75);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+}
+.topbar-inner{
+  width:100%;max-width:1080px;margin:0 auto;padding:11px 16px;min-height:62px;
+  display:flex;align-items:center;gap:14px
+}
+.brand{display:flex;align-items:center;gap:11px;min-width:0;flex:1}
+.brand-mark{
+  width:40px;height:40px;border-radius:13px;display:grid;place-items:center;color:#fff;flex:0 0 auto;
+  background:linear-gradient(145deg,#4A97F7,#2069D1);
+  box-shadow:0 7px 16px rgba(40,120,229,.23)
+}
+.brand-copy{min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.brand-title{font-size:17px;font-weight:800;color:var(--title);letter-spacing:.1px}
+.brand-sub{font-size:10.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.desktop-nav{display:none;align-items:center;gap:5px;margin-left:auto;background:#fff;border:1px solid var(--line);padding:4px;border-radius:14px;box-shadow:0 3px 12px rgba(31,77,134,.04)}
+.desktop-nav .nav-btn{width:auto;min-width:88px;height:40px;flex-direction:row;gap:7px;padding:0 14px;border-radius:10px;font-size:14px}
+.desktop-nav .nav-btn span{font-size:13px}
+.icon-btn{
+  width:44px;height:44px;min-width:44px;border:1px solid var(--line);background:#fff;border-radius:13px;
+  display:inline-flex;align-items:center;justify-content:center;color:var(--text);
+  box-shadow:0 3px 10px rgba(31,77,134,.04);transition:border-color .15s,color .15s,background .15s
+}
+.icon-btn:hover{border-color:var(--primary-line);color:var(--primary);background:#FBFDFF}
+.icon-btn:active{transform:translateY(1px)}
+.app-main{
+  width:100%;max-width:1080px;margin:0 auto;
+  padding:18px 16px calc(92px + var(--safe-bottom));
+}
+.view{animation:viewIn .18s ease both}
+@keyframes viewIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.page-head{padding:6px 2px 18px}
+.eyebrow{
+  font-size:12px;font-weight:700;color:var(--primary);letter-spacing:.045em;
+  display:flex;align-items:center;gap:6px;min-height:18px
+}
+.page-head h1{
+  margin-top:5px;font-size:clamp(25px,6.2vw,34px);line-height:1.18;letter-spacing:-.025em;color:var(--title);font-weight:800
+}
+.page-sub{font-size:13px;color:var(--muted);margin-top:6px;max-width:560px;line-height:1.65}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);
+}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.card-head h2{font-size:16px;color:var(--title);font-weight:750;line-height:1.45}
+.card-head h3{font-size:14px;color:var(--title);font-weight:700}
+.card-sub{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.55}
+.text-btn{
+  min-height:44px;padding:4px 2px;border:0;background:none;color:var(--primary);font-size:13px;font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap
+}
+.text-btn:hover{color:var(--primary-dark)}
+.text-btn:disabled{color:var(--muted);opacity:.55}
+.card-link{font-size:12.5px}
+
+/* ---------- Buttons / forms ---------- */
+.btn{
+  min-height:46px;border:1px solid transparent;border-radius:12px;padding:10px 16px;
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  font-size:14px;font-weight:700;line-height:1.2;text-decoration:none;
+  transition:background .15s,border-color .15s,color .15s,box-shadow .15s,transform .08s
+}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 8px 18px rgba(40,120,229,.18)}
+.btn-primary:hover{background:#216FD9}
+.btn-primary:disabled{background:#A9C7F1;box-shadow:none}
+.btn-secondary{background:#fff;border-color:var(--line-strong);color:var(--text)}
+.btn-secondary:hover{border-color:#BCD6F6;color:var(--title);background:#FBFDFF}
+.btn-soft{background:var(--primary-soft);color:var(--primary-dark);border-color:#D8E8FD}
+.btn-soft:hover{background:#DFEDFF}
+.btn-danger{background:var(--danger);color:#fff;box-shadow:0 7px 16px rgba(212,84,84,.16)}
+.btn-danger:hover{background:var(--danger-dark)}
+.btn-outline-danger{background:#fff;border-color:#F0C3C3;color:var(--danger)}
+.btn-outline-danger:hover{background:var(--danger-soft)}
+.btn-ghost{background:transparent;color:var(--text)}
+.btn-ghost:hover{background:#F5F9FF}
+.btn-lg{min-height:54px;border-radius:15px;font-size:16px}
+.btn-block{width:100%}
+.btn[disabled]{opacity:.62;box-shadow:none}
+.button-row{display:grid;grid-template-columns:1fr;gap:9px}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field>span,.field-label{font-size:12.5px;font-weight:700;color:var(--title);line-height:1.4}
+.field-help{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:6px}
+.input{
+  width:100%;min-height:47px;border:1px solid var(--line-strong);border-radius:12px;
+  padding:11px 13px;background:#FBFDFF;color:var(--title);font-size:16px;
+  transition:border-color .15s,box-shadow .15s,background .15s;
+  appearance:none;-webkit-appearance:none
+}
+textarea.input{resize:vertical;min-height:100px}
+.input::placeholder{color:#ACB9CA;font-weight:400}
+.input:hover{border-color:#C7DBF4}
+.input:focus{outline:none;border-color:var(--primary);background:#fff;box-shadow:0 0 0 3px rgba(40,120,229,.1)}
+.input.invalid{border-color:#E48B8B;background:#FFFDFD;box-shadow:0 0 0 3px rgba(212,84,84,.07)}
+.input[type="date"]{min-height:47px;line-height:1.35}
+.input[type="date"]::-webkit-calendar-picker-indicator{opacity:.58;cursor:pointer}
+.input[type="month"]{min-height:45px}
+select.input{
+  cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2352647A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 13px center;padding-right:38px
+}
+.form-error{
+  font-size:12.5px;line-height:1.55;color:var(--danger);background:var(--danger-soft);
+  border:1px solid #F5D4D4;border-radius:10px;padding:9px 11px;margin-top:10px
+}
+.form-error[hidden]{display:none!important}
+.input-wrap{position:relative}
+.input-wrap .input{padding-left:34px}
+.input-prefix{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--muted);pointer-events:none}
+
+/* ---------- Home ---------- */
+.stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-bottom:15px}
+.stat-card{
+  position:relative;overflow:hidden;padding:15px 15px 14px;min-height:114px;
+  background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:17px;box-shadow:var(--shadow)
+}
+.stat-card::after{
+  content:"";position:absolute;right:-22px;top:-26px;width:78px;height:78px;border-radius:50%;
+  background:rgba(234,242,255,.78);pointer-events:none
+}
+.stat-top{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1}
+.stat-label{font-size:11.5px;color:var(--muted);font-weight:650;letter-spacing:.01em}
+.stat-icon{
+  width:31px;height:31px;border-radius:10px;display:grid;place-items:center;color:var(--primary);
+  background:var(--primary-soft);position:relative;z-index:1
+}
+.stat-icon .icon{width:17px;height:17px}
+.stat-value{
+  position:relative;z-index:1;margin-top:10px;color:var(--title);font-weight:800;letter-spacing:-.025em;
+  font-size:clamp(19px,5.3vw,28px);line-height:1.15;font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.stat-value.is-long{font-size:clamp(14px,4.4vw,22px)}
+.stat-unit{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.3;position:relative;z-index:1}
+.home-add{
+  width:100%;min-height:56px;margin-bottom:18px;border-radius:17px;font-size:16px;
+  background:linear-gradient(135deg,#3688F0,#216BD3);box-shadow:0 12px 24px rgba(40,120,229,.21)
+}
+.home-add .icon{width:21px;height:21px}
+.home-add:hover{background:linear-gradient(135deg,#2B7DE6,#1B60C4)}
+.recent-card{padding:16px 16px 8px}
+.home-head-actions{display:flex;align-items:center;gap:6px}
+.record-list{display:flex;flex-direction:column}
+.record-row{
+  width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;
+  display:flex;align-items:center;gap:10px;text-align:left;padding:11px 2px;min-height:64px;
+  border-radius:9px;transition:background .15s
+}
+.record-row:last-child{border-bottom:0}
+.record-row:hover{background:#F8FBFF}
+.record-date{
+  width:42px;min-width:42px;height:42px;border-radius:12px;background:#F4F8FF;color:var(--primary-dark);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15
+}
+.record-date strong{font-size:12px;font-weight:800;white-space:nowrap}
+.record-date span{font-size:9.5px;color:var(--muted);margin-top:2px;white-space:nowrap}
+.record-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.record-name{
+  display:block;font-size:14px;font-weight:700;color:var(--title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.record-meta{
+  display:flex;align-items:center;gap:5px;flex-wrap:wrap;
+  font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums
+}
+.record-note{
+  flex:1 0 100%;display:block;font-size:10.5px;color:#71839A;line-height:1.45;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.record-meta .dot{width:2px;height:2px;border-radius:50%;background:#BDC9D8}
+.record-end{display:flex;align-items:center;gap:2px;flex:0 0 auto;max-width:44%}
+.record-amount{
+  font-size:14px;font-weight:800;color:var(--title);white-space:nowrap;
+  font-variant-numeric:tabular-nums;letter-spacing:-.015em
+}
+.record-end .icon{color:#B5C3D5;width:16px;height:16px;margin-left:1px}
+.empty-state{text-align:center;padding:30px 14px;color:var(--muted)}
+.empty-state .empty-icon{
+  width:54px;height:54px;border-radius:17px;margin:0 auto 12px;display:grid;place-items:center;
+  color:var(--primary);background:var(--primary-soft)
+}
+.empty-state h3{font-size:14px;color:var(--title);font-weight:700;margin-bottom:5px}
+.empty-state p{font-size:12.5px;line-height:1.7;max-width:310px;margin:0 auto}
+.empty-state .btn{margin-top:14px}
+.empty-state.compact{padding:16px 8px}
+.empty-state.compact .empty-icon{width:42px;height:42px;border-radius:13px;margin-bottom:8px}
+
+/* ---------- Entry ---------- */
+.date-card{padding:16px;margin-bottom:14px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.date-card .field{flex:1;min-width:0}
+.date-card .text-btn{min-width:52px;padding:0 8px;min-height:46px;border:1px solid var(--line);background:#fff;border-radius:11px;margin-bottom:0}
+.date-card .form-error{flex:0 0 100%;margin-top:0}
+.quick-card{padding:17px 16px;margin-bottom:17px}
+.quick-card .card-head{margin-bottom:11px}
+.chip-group{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+@media (max-width:639px){
+  .chip-group{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:2px 1px 6px;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+  .chip-group::-webkit-scrollbar{display:none}
+  .chip-group .chip{flex:0 0 auto}
+  .chip-group .chip-empty{flex:1 0 100%}
+}
+.chip{
+  max-width:100%;min-height:44px;border:1px solid var(--primary-line);background:#F7FAFF;color:var(--primary-dark);
+  border-radius:999px;padding:7px 11px;display:inline-flex;align-items:center;gap:6px;
+  font-size:12.5px;font-weight:650;line-height:1.25;transition:background .15s,border-color .15s
+}
+.chip:hover{background:var(--primary-soft);border-color:#BED8FB}
+.chip:active{transform:translateY(1px)}
+.chip-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px}
+.chip-price{
+  font-size:10.5px;font-weight:600;color:var(--muted);background:#fff;border:1px solid #E5EFFC;
+  border-radius:999px;padding:2px 6px;white-space:nowrap
+}
+.chip-empty{
+  width:100%;min-height:45px;border:1px dashed #D6E4F5;border-radius:12px;background:#FBFDFF;
+  color:var(--muted);font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;text-align:center
+}
+.soft-divider{height:1px;background:var(--line);margin:15px 0 13px}
+.entry-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 2px 11px}
+.entry-toolbar h2{font-size:17px;color:var(--title);font-weight:750}
+.entry-toolbar .card-sub{max-width:340px}
+.entry-toolbar .btn{min-height:44px;padding:8px 12px;font-size:12.5px;border-radius:11px;flex:0 0 auto}
+.entry-row{
+  background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px 13px 12px;
+  box-shadow:var(--shadow);margin-bottom:11px;transition:border-color .15s,box-shadow .15s
+}
+.entry-row.is-active{border-color:#A7CBF9;box-shadow:0 0 0 3px rgba(40,120,229,.065),var(--shadow)}
+.entry-row.has-error{border-color:#F0B8B8}
+.entry-row-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.row-index{
+  display:inline-flex;align-items:center;gap:6px;color:var(--primary);font-size:11.5px;font-weight:750
+}
+.row-index .num{
+  width:24px;height:24px;border-radius:8px;background:var(--primary-soft);display:grid;place-items:center;
+  font-size:10.5px;font-variant-numeric:tabular-nums
+}
+.row-actions{display:flex;align-items:center;gap:3px}
+.row-action{
+  min-height:44px;border:0;background:transparent;color:var(--muted);border-radius:9px;padding:6px 8px;
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:650
+}
+.row-action:hover{background:#F5F9FF;color:var(--primary)}
+.row-action:disabled{opacity:.42;background:transparent}
+.row-action.danger:hover{background:var(--danger-soft);color:var(--danger)}
+.row-action .icon{width:15px;height:15px}
+.entry-row .field{margin-bottom:9px}
+.row-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px}
+.row-total{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border-top:1px dashed #DDE9F7;margin-top:2px;padding-top:10px
+}
+.row-total span{font-size:11.5px;color:var(--muted)}
+.row-total strong{
+  font-size:17px;font-weight:800;color:var(--title);letter-spacing:-.02em;font-variant-numeric:tabular-nums
+}
+.row-error{margin-top:8px}
+.add-row-btn{
+  width:100%;min-height:47px;border:1px dashed #BCD6F5;background:rgba(255,255,255,.6);
+  border-radius:13px;color:var(--primary);font-size:13px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;gap:6px;margin:1px 0 16px
+}
+.add-row-btn:hover{background:#F8FBFF;border-color:var(--primary)}
+.summary-card{padding:17px 16px;background:linear-gradient(145deg,#fff 0%,#F8FBFF 100%)}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.summary-item{background:#fff;border:1px solid var(--line);border-radius:13px;padding:10px 12px;min-width:0}
+.summary-item span{display:block;font-size:10.5px;color:var(--muted);margin-bottom:3px}
+.summary-item strong{
+  display:block;font-size:19px;color:var(--title);font-weight:800;line-height:1.25;
+  font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.summary-item strong.is-long{font-size:15px}
+.summary-hint{font-size:11px;color:var(--muted);margin:10px 2px 12px;line-height:1.55}
+.summary-card .btn-block{min-height:52px;border-radius:14px;font-size:15.5px}
+
+/* ---------- History ---------- */
+.segmented{
+  display:grid;grid-template-columns:1fr 1fr;gap:4px;background:#E8F1FC;border:1px solid #DDEAF9;
+  border-radius:14px;padding:4px;margin-bottom:15px;max-width:520px
+}
+.seg-btn{
+  min-height:44px;border:0;background:transparent;border-radius:10px;color:var(--text);
+  font-size:13.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px
+}
+.seg-btn .icon{width:17px;height:17px}
+.seg-btn.active{background:#fff;color:var(--primary);box-shadow:0 3px 10px rgba(31,77,134,.08)}
+.history-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.calendar-column{display:flex;flex-direction:column;gap:14px;min-width:0}
+.calendar-card{padding:14px 11px 13px}
+.calendar-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px;padding:0 2px}
+.calendar-title-wrap{display:flex;align-items:center;gap:5px;min-width:0}
+.calendar-title{font-size:16px;font-weight:800;color:var(--title);white-space:nowrap;letter-spacing:-.01em}
+.cal-select{
+  height:44px;min-width:0;max-width:100%;border:1px solid var(--line-strong);border-radius:10px;background-color:#F8FBFF;
+  color:var(--title);font-size:16px;font-weight:700;line-height:1.2;padding:0 23px 0 8px;
+  cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2352647A' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center;
+  font-variant-numeric:tabular-nums
+}
+.cal-select:hover{border-color:var(--primary-line);background-color:#fff}
+.cal-select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(40,120,229,.1)}
+.cal-select-year{width:88px}
+.cal-select-month{width:65px}
+.cal-nav{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+.cal-icon-btn{
+  width:44px;height:44px;min-width:44px;border:1px solid var(--line);background:#fff;border-radius:10px;
+  display:grid;place-items:center;color:var(--text)
+}
+.cal-icon-btn:hover{border-color:var(--primary-line);color:var(--primary);background:#F9FCFF}
+.cal-icon-btn .icon{width:17px;height:17px}
+.today-btn{
+  min-height:44px;border:1px solid var(--line);background:#fff;border-radius:10px;color:var(--primary);
+  font-size:11px;font-weight:700;padding:5px 9px
+}
+.month-summary{
+  display:grid;grid-template-columns:1.05fr 1.35fr .9fr;gap:6px;
+  background:linear-gradient(135deg,#EFF6FF,#F7FBFF);border:1px solid #DFEBFB;border-radius:12px;
+  padding:9px 10px;margin-bottom:12px
+}
+.month-summary span{display:block;font-size:9.5px;color:var(--muted);white-space:nowrap;margin-bottom:2px}
+.month-summary strong{
+  display:block;font-size:12px;font-weight:800;color:var(--title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-variant-numeric:tabular-nums
+}
+.calendar-weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.calendar-weekdays{margin-bottom:4px}
+.weekday{
+  text-align:center;font-size:10px;color:var(--muted);font-weight:650;padding:3px 0
+}
+.weekday:first-child,.weekday:last-child{color:#A5B4C8}
+.cal-day{
+  position:relative;min-width:0;min-height:59px;border:1px solid transparent;border-radius:9px;
+  background:#F8FBFF;padding:5px 2px 4px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  color:var(--text);transition:background .12s,border-color .12s,color .12s
+}
+.cal-day:hover{background:#F1F7FF;border-color:#D5E6FB}
+.cal-day.has-records{background:#F3F8FF;border-color:#E1EDFC}
+.cal-day.today{background:var(--primary-soft);border-color:#B4D3F8}
+.cal-day.selected{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 5px 12px rgba(40,120,229,.22)}
+.cal-day.selected:hover{background:var(--primary)}
+.cal-day .day-num{font-size:11.5px;font-weight:750;line-height:1.2;height:16px;font-variant-numeric:tabular-nums}
+.cal-day.today:not(.selected) .day-num{color:var(--primary-dark)}
+.cal-day.today:not(.selected)::after{
+  content:"";position:absolute;top:4px;right:4px;width:4px;height:4px;border-radius:50%;background:var(--primary)
+}
+.cal-amount{
+  margin-top:2px;font-size:9px;line-height:1.2;font-weight:750;color:var(--primary-dark);
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums
+}
+.cal-qty{font-size:8px;line-height:1.2;color:var(--muted);margin-top:1px;white-space:nowrap}
+.cal-day.selected .cal-amount{color:#fff}
+.cal-day.selected .cal-qty{color:#D9E9FF}
+.cal-blank{min-height:59px;border-radius:9px}
+.calendar-legend{font-size:9.5px;color:var(--muted);text-align:right;margin-top:7px;padding-right:2px}
+.day-detail-card{padding:16px 15px;scroll-margin-top:78px}
+.detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.detail-head h2{font-size:17px;color:var(--title);font-weight:800;letter-spacing:-.01em}
+.detail-head .card-sub{margin-top:2px}
+.day-total-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.day-total-item{background:#F7FAFF;border:1px solid var(--line);border-radius:11px;padding:8px 10px;min-width:0}
+.day-total-item span{display:block;font-size:9.5px;color:var(--muted);margin-bottom:1px}
+.day-total-item strong{
+  display:block;font-size:13.5px;color:var(--title);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-variant-numeric:tabular-nums
+}
+.detail-record{padding:11px 0;border-bottom:1px solid var(--line)}
+.detail-record:first-of-type{padding-top:0}
+.detail-record:last-child{border-bottom:0;padding-bottom:0}
+.detail-record-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.detail-record-main{min-width:0}
+.detail-record-name{font-size:13.5px;font-weight:750;color:var(--title);overflow-wrap:anywhere}
+.detail-record-meta{font-size:11px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums;line-height:1.55}
+.detail-record-note{
+  font-size:10.5px;color:#61748B;line-height:1.55;margin-top:5px;padding:4px 7px;
+  background:#F7FAFF;border-left:2px solid #C7DDF8;border-radius:0 6px 6px 0;overflow-wrap:anywhere
+}
+.detail-record-amount{
+  font-size:13.5px;font-weight:800;color:var(--title);white-space:nowrap;font-variant-numeric:tabular-nums;
+  letter-spacing:-.01em
+}
+.record-actions{display:flex;align-items:center;gap:6px;margin-top:7px}
+.action-btn{
+  min-height:44px;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:9px;
+  font-size:11px;font-weight:650;padding:6px 11px;display:inline-flex;align-items:center;justify-content:center;gap:4px
+}
+.action-btn:hover{border-color:var(--primary-line);color:var(--primary);background:#FBFDFF}
+.action-btn.danger:hover{border-color:#F0C7C7;color:var(--danger);background:var(--danger-soft)}
+.action-btn .icon{width:14px;height:14px}
+.detail-footer-note{font-size:10.5px;color:var(--muted);text-align:center;padding-top:12px}
+
+/* Name view */
+.name-list-card{padding:16px 15px 8px}
+.search-box{position:relative;margin:0 0 6px}
+.search-box .icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);width:18px;height:18px}
+.search-box .input{padding-left:40px;background:#F8FBFF}
+.name-list{display:flex;flex-direction:column}
+.name-item{
+  width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:transparent;
+  border:0;border-bottom:1px solid var(--line);padding:12px 1px;min-height:67px;border-radius:9px
+}
+.name-item:last-child{border-bottom:0}
+.name-item:hover{background:#F9FCFF}
+.name-avatar{
+  width:40px;height:40px;min-width:40px;border-radius:12px;display:grid;place-items:center;
+  background:var(--primary-soft);color:var(--primary);font-size:15px;font-weight:800;overflow:hidden
+}
+.name-content{flex:1;min-width:0;display:flex;flex-direction:column}
+.name-title{display:block;font-size:13.5px;font-weight:750;color:var(--title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.name-sub{font-size:10.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.name-summary{text-align:right;flex:0 0 auto;max-width:44%}
+.name-summary strong{
+  display:block;font-size:13px;font-weight:800;color:var(--title);white-space:nowrap;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em
+}
+.name-summary span{display:block;font-size:9.5px;color:var(--muted);margin-top:2px;white-space:nowrap}
+.name-item>.icon{color:#B8C5D6;width:15px;height:15px}
+.name-detail-wrap{display:flex;flex-direction:column;gap:12px}
+.back-btn{
+  align-self:flex-start;min-height:44px;border:0;background:none;color:var(--primary);font-size:13px;font-weight:700;
+  display:inline-flex;align-items:center;gap:5px;padding:3px 0
+}
+.back-btn .icon{width:17px;height:17px}
+.name-detail-card{padding:16px 15px}
+.name-detail-title{display:flex;align-items:center;gap:11px;min-width:0;margin-bottom:14px}
+.name-detail-title .name-avatar{width:46px;height:46px;min-width:46px;border-radius:14px;font-size:17px}
+.name-detail-title h2{font-size:18px;color:var(--title);font-weight:800;overflow-wrap:anywhere;line-height:1.35}
+.name-detail-title .card-sub{margin-top:2px}
+.detail-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:14px}
+.detail-stat{background:#F6FAFF;border:1px solid #E8F1FC;border-radius:11px;padding:9px 9px;min-width:0}
+.detail-stat span{display:block;font-size:9.5px;color:var(--muted);white-space:nowrap;margin-bottom:2px}
+.detail-stat strong{
+  display:block;font-size:13px;color:var(--title);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-variant-numeric:tabular-nums
+}
+.filter-row{display:flex;align-items:flex-end;gap:9px;border-top:1px solid var(--line);padding-top:13px;margin-top:1px}
+.filter-row .field{flex:1}
+.note-line{font-size:10.5px;color:var(--muted);line-height:1.6;margin-top:8px}
+.name-record-date{font-size:10px;color:var(--muted);margin-bottom:2px;font-variant-numeric:tabular-nums}
+
+/* Report */
+.report-card{padding:16px 15px}
+.report-head{align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.report-head h2{font-size:16px;color:var(--title);font-weight:750}
+.report-seg{
+  display:inline-flex;align-items:center;gap:2px;background:#EFF5FD;border:1px solid #E4EEFA;
+  border-radius:10px;padding:3px;flex:0 0 auto
+}
+.report-seg button{
+  min-height:44px;border:0;background:transparent;border-radius:8px;padding:5px 10px;
+  color:var(--muted);font-size:11.5px;font-weight:700;white-space:nowrap
+}
+.report-seg button.active{background:#fff;color:var(--primary);box-shadow:0 2px 7px rgba(31,77,134,.08)}
+.report-total{
+  background:linear-gradient(135deg,#F0F7FF,#FAFDFF);border:1px solid #DEEBFA;border-radius:13px;
+  padding:12px 13px;margin-bottom:13px
+}
+.report-total-label{display:block;font-size:10.5px;color:var(--muted);line-height:1.4}
+.report-total-value{
+  display:block;margin-top:2px;font-size:26px;line-height:1.2;color:var(--title);font-weight:800;
+  letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.report-total-value.is-long{font-size:21px}
+.report-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-top:5px}
+.report-meta span{display:inline-flex;align-items:center;gap:4px}
+.report-meta span+span::before{content:"";width:2px;height:2px;border-radius:50%;background:#BECBDC}
+.report-foot{font-size:9.5px;color:var(--muted);text-align:right;margin-top:9px;line-height:1.5}
+.report-content{display:flex;flex-direction:column;align-items:center;gap:14px}
+.report-pie{display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.report-pie svg{width:154px;height:154px;overflow:visible}
+.report-legend{width:100%;min-width:0;display:flex;flex-direction:column;gap:5px}
+.report-legend-row{
+  display:grid;grid-template-columns:9px minmax(0,1fr) auto;align-items:center;gap:7px;
+  min-height:29px;padding:3px 0;border-bottom:1px dashed #E7EFF9
+}
+.report-legend-row:last-child{border-bottom:0}
+.report-dot{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+.report-legend-name{
+  font-size:11.5px;font-weight:650;color:var(--title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0
+}
+.report-legend-value{text-align:right;min-width:0;line-height:1.25}
+.report-legend-value strong{
+  display:block;font-size:11.5px;color:var(--primary-dark);font-weight:800;
+  font-variant-numeric:tabular-nums;white-space:nowrap
+}
+.report-legend-value small{
+  display:block;font-size:9.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap
+}
+.report-empty{padding:4px 0 2px}
+.report-empty .empty-icon{width:46px;height:46px;border-radius:14px}
+.report-empty p{font-size:11.5px}
+@media (min-width:640px){
+  .report-content{flex-direction:row;align-items:center;gap:18px}
+  .report-pie{flex:0 0 160px}
+  .report-pie svg{width:164px;height:164px}
+  .report-legend{flex:1}
+}
+
+/* Chart */
+.chart-card{padding:16px 15px 12px;margin-top:15px}
+.chart-card .card-head{margin-bottom:2px}
+.chart{
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;align-items:end;
+  height:142px;padding:22px 0 0;border-bottom:1px solid var(--line);margin-top:3px
+}
+.chart-col{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0}
+.chart-value{
+  font-size:8.5px;color:var(--muted);white-space:nowrap;line-height:1.2;margin-bottom:4px;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums
+}
+.chart-track{width:100%;height:86px;display:flex;align-items:flex-end;justify-content:center}
+.chart-bar{
+  width:58%;max-width:34px;min-width:10px;border-radius:6px 6px 3px 3px;
+  background:linear-gradient(180deg,#63A2F3,#2878E5);box-shadow:0 3px 8px rgba(40,120,229,.11)
+}
+.chart-bar.is-zero{height:3px !important;background:#E2ECF9;box-shadow:none}
+.chart-label{font-size:9.5px;color:var(--muted);padding:5px 0 7px;white-space:nowrap;line-height:1.2}
+.chart-foot{font-size:9.5px;color:var(--muted);line-height:1.5;padding:8px 1px 0;display:flex;justify-content:space-between;gap:8px}
+.chart-foot span:last-child{text-align:right}
+
+/* ---------- Bottom nav ---------- */
+.bottom-nav{
+  position:fixed;z-index:40;left:0;right:0;bottom:0;
+  background:rgba(255,255,255,.96);border-top:1px solid rgba(219,232,247,.9);
+  padding-bottom:var(--safe-bottom);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  box-shadow:0 -5px 24px rgba(31,77,134,.055)
+}
+.bottom-nav-inner{width:100%;max-width:700px;margin:0 auto;height:62px;display:grid;grid-template-columns:repeat(3,1fr);padding:0 8px}
+.nav-btn{
+  position:relative;border:0;background:transparent;color:var(--muted);min-width:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:5px 4px;
+  border-radius:12px;font-size:10.5px;font-weight:650;transition:color .15s
+}
+.nav-icon-wrap{
+  width:38px;height:29px;border-radius:9px;display:grid;place-items:center;transition:background .15s
+}
+.nav-btn .icon{width:20px;height:20px}
+.nav-btn.active{color:var(--primary)}
+.nav-btn.active .nav-icon-wrap{background:var(--primary-soft)}
+.nav-btn.active .icon{stroke-width:2.1}
+.nav-btn:active .nav-icon-wrap{background:#EFF6FF}
+
+/* ---------- Toast ---------- */
+.toast-wrap{
+  position:fixed;z-index:230;left:50%;transform:translateX(-50%);
+  bottom:calc(77px + var(--safe-bottom));width:min(92vw,430px);
+  display:flex;flex-direction:column;gap:8px;pointer-events:none
+}
+.toast{
+  pointer-events:auto;display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;
+  background:#1E3D67;color:#fff;box-shadow:0 12px 28px rgba(10,33,65,.22);
+  font-size:12.5px;line-height:1.45;opacity:0;transform:translateY(7px);
+  transition:opacity .18s,transform .18s
+}
+.toast.show{opacity:1;transform:none}
+.toast.error{background:#8F3737}
+.toast.success{background:#166F56}
+.toast.info{background:#1E3D67}
+.toast-icon{width:25px;height:25px;border-radius:8px;background:rgba(255,255,255,.13);display:grid;place-items:center;flex:0 0 auto}
+.toast-icon .icon{width:15px;height:15px}
+.toast-text{flex:1;min-width:0;overflow-wrap:anywhere}
+.toast-action{
+  flex:0 0 auto;min-height:40px;border:0;border-radius:8px;background:rgba(255,255,255,.14);
+  color:#fff;padding:5px 10px;font-size:12px;font-weight:750
+}
+.toast-action:hover{background:rgba(255,255,255,.23)}
+
+/* ---------- Modals ---------- */
+.modal-layer{
+  position:fixed;inset:0;z-index:100;background:rgba(13,35,63,.46);
+  display:flex;align-items:flex-end;justify-content:center;padding:0;
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)
+}
+.modal-layer.centered{align-items:center;padding:16px}
+.modal{
+  width:100%;max-width:560px;max-height:92vh;max-height:92dvh;background:#fff;
+  border-radius:22px 22px 0 0;box-shadow:var(--shadow-strong);
+  display:flex;flex-direction:column;overflow:hidden;
+  animation:modalIn .2s ease both
+}
+@keyframes modalIn{from{opacity:.4;transform:translateY(16px)}to{opacity:1;transform:none}}
+.modal.small-modal{max-width:470px;border-radius:20px}
+.modal.edit-modal{max-width:560px;border-radius:22px;max-height:calc(100dvh - 28px)}
+.modal.settings-modal{max-width:720px;height:93vh;height:93dvh}
+.modal.confirm-modal{max-width:400px;border-radius:20px}
+.modal-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:18px 18px 12px;border-bottom:1px solid var(--line);flex:0 0 auto;background:#fff
+}
+.modal-head h2{font-size:18px;color:var(--title);font-weight:800;letter-spacing:-.01em}
+.modal-kicker{font-size:10px;font-weight:700;color:var(--primary);letter-spacing:.07em;margin-bottom:2px}
+.modal-body{padding:16px 18px;overflow-y:auto;overscroll-behavior:contain;flex:1 1 auto;-webkit-overflow-scrolling:touch}
+.modal-footer{
+  display:flex;align-items:center;justify-content:flex-end;gap:9px;
+  padding:12px 18px calc(12px + var(--safe-bottom));border-top:1px solid var(--line);
+  background:#fff;flex:0 0 auto
+}
+.modal-footer .btn{flex:1;min-height:48px}
+.modal-footer .btn.auto{flex:0 0 auto;min-width:100px}
+.modal .field{margin-bottom:13px}
+.modal-close{
+  width:44px;height:44px;min-width:44px;border:0;background:#F6F9FE;border-radius:11px;
+  display:grid;place-items:center;color:var(--muted)
+}
+.modal-close:hover{background:#EEF5FF;color:var(--primary)}
+.modal-close .icon{width:18px;height:18px}
+.readonly-amount{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:#F2F8FF;border:1px solid #DFECFB;border-radius:12px;padding:11px 13px;margin-top:2px
+}
+.readonly-amount span{font-size:11.5px;color:var(--muted)}
+.readonly-amount strong{
+  font-size:20px;color:var(--primary-dark);font-weight:800;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;white-space:nowrap
+}
+.edit-footer{justify-content:space-between;gap:10px}
+.edit-footer .footer-actions{display:flex;gap:8px;flex:1;justify-content:flex-end}
+.edit-footer .footer-actions .btn{flex:0 0 auto;min-width:94px}
+.link-danger{
+  min-height:44px;border:0;background:none;color:var(--danger);font-size:12px;font-weight:700;
+  padding:5px 3px;white-space:nowrap
+}
+.link-danger:hover{color:var(--danger-dark);text-decoration:underline}
+.confirm-icon{
+  width:52px;height:52px;border-radius:16px;display:grid;place-items:center;margin:4px auto 13px;
+  background:var(--primary-soft);color:var(--primary)
+}
+.confirm-icon.danger{background:var(--danger-soft);color:var(--danger)}
+.confirm-modal .modal-body{text-align:center;padding:25px 22px 19px}
+.confirm-modal h2{font-size:18px;color:var(--title);font-weight:800;margin-bottom:7px}
+.confirm-modal p{font-size:13px;color:var(--text);line-height:1.7;overflow-wrap:anywhere}
+.confirm-modal .modal-footer{border-top:0;padding-top:0}
+
+/* Settings */
+.settings-body{padding:16px 18px calc(26px + var(--safe-bottom))}
+.settings-summary{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:linear-gradient(135deg,#F1F7FF,#F9FCFF);border:1px solid #DDEBFC;border-radius:13px;
+  padding:11px 13px;margin-bottom:18px
+}
+.settings-summary span{font-size:11px;color:var(--muted)}
+.settings-summary strong{display:block;font-size:12.5px;color:var(--title);font-weight:750;margin-top:1px}
+.settings-badge{font-size:10px;color:var(--primary);background:#fff;border:1px solid #DCEAFC;border-radius:999px;padding:3px 8px;white-space:nowrap}
+.settings-section{padding:2px 0}
+.settings-section h3{font-size:14.5px;color:var(--title);font-weight:800;margin-bottom:4px}
+.settings-section>p{font-size:11.5px;color:var(--muted);line-height:1.65;margin-bottom:11px}
+.section-heading p{font-size:11.5px;color:var(--muted);line-height:1.65;max-width:430px;margin-top:3px}
+.settings-section .section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:2px}
+.settings-divider{height:1px;border:0;background:var(--line);margin:19px 0}
+.tag-manage-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:10px}
+.setting-tag-row{display:flex;align-items:center;gap:9px;padding:9px 10px;border-bottom:1px solid var(--line);background:#fff;min-width:0}
+.setting-tag-row:last-child{border-bottom:0}
+.setting-tag-icon{width:31px;height:31px;min-width:31px;border-radius:9px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center}
+.setting-tag-icon .icon{width:15px;height:15px}
+.setting-tag-main{flex:1;min-width:0}
+.setting-tag-main strong{display:block;font-size:12.5px;color:var(--title);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setting-tag-main span{display:block;font-size:10px;color:var(--muted);margin-top:1px}
+.tag-row-actions{display:flex;gap:2px;flex:0 0 auto}
+.tag-row-actions button{min-height:44px;border:0;background:transparent;color:var(--primary);font-size:10.5px;font-weight:700;padding:4px 7px;border-radius:7px}
+.tag-row-actions button:hover{background:#F2F8FF}
+.tag-row-actions button.danger{color:var(--danger)}
+.tag-row-actions button.danger:hover{background:var(--danger-soft)}
+.mini-seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;background:#EFF5FD;border-radius:10px;padding:3px;margin-bottom:10px}
+.mini-seg button{min-height:37px;border:0;background:transparent;border-radius:8px;font-size:11.5px;font-weight:700;color:var(--muted)}
+.mini-seg button.active{background:#fff;color:var(--primary);box-shadow:0 2px 7px rgba(31,77,134,.07)}
+.export-month{margin-bottom:11px}
+.settings-section .button-row{grid-template-columns:1fr}
+.storage-note{
+  display:flex;gap:11px;background:#F5FAFF;border:1px solid #DEEBFA;border-radius:13px;padding:13px
+}
+.storage-note .note-icon{width:36px;height:36px;min-width:36px;border-radius:10px;background:#fff;border:1px solid #E4EFFD;color:var(--primary);display:grid;place-items:center}
+.storage-note h3{font-size:12.5px;margin-bottom:4px}
+.storage-note p{font-size:11px;line-height:1.65;color:var(--text);margin-bottom:6px}
+.storage-note p strong{color:var(--title);font-weight:750}
+.storage-note p.small{font-size:10px;color:var(--muted);margin-bottom:0}
+.import-box{border:1px solid var(--line);border-radius:13px;padding:12px;margin-top:11px;background:#FBFDFF}
+.import-box-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.import-box-head strong{font-size:12.5px;color:var(--title)}
+.import-box-head span{font-size:10px;color:var(--muted);word-break:break-all;text-align:right}
+.import-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px}
+.import-meta div{background:#fff;border:1px solid var(--line);border-radius:9px;padding:7px 8px;min-width:0}
+.import-meta span{display:block;font-size:9px;color:var(--muted);margin-bottom:1px}
+.import-meta strong{display:block;font-size:11px;color:var(--title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.import-warning{font-size:10.5px;color:var(--muted);line-height:1.6;margin-bottom:10px}
+.import-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.import-actions .btn{min-height:42px;font-size:11.5px;padding:8px 9px}
+.import-hint{font-size:10px;color:var(--muted);margin-top:8px;line-height:1.55}
+
+/* ---------- Desktop ---------- */
+@media (min-width:640px){
+  .app-main{padding-left:24px;padding-right:24px}
+  .button-row{grid-template-columns:1fr 1fr}
+  .settings-section .button-row{grid-template-columns:1fr 1fr}
+  .stats-grid{gap:13px}
+  .stat-card{padding:17px 18px;min-height:120px}
+  .stat-value{font-size:clamp(24px,3vw,31px)}
+  .entry-toolbar h2{font-size:18px}
+  .record-row{gap:13px;padding:12px 5px}
+  .cal-day{min-height:68px}
+  .cal-blank{min-height:68px}
+  .cal-amount{font-size:10px}
+  .cal-qty{font-size:8.5px}
+  .day-detail-card{padding:18px}
+  .modal.edit-modal{border-radius:22px}
+}
+@media (min-width:1024px){
+  .topbar-inner{padding-top:12px;padding-bottom:12px;min-height:68px}
+  .desktop-nav{display:flex}
+  .brand{flex:0 0 auto}
+  .app-main{padding-top:24px;padding-bottom:48px}
+  .bottom-nav{display:none}
+  .toast-wrap{bottom:24px}
+  .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .home-add{min-height:58px}
+  .history-layout{grid-template-columns:minmax(0,1.18fr) minmax(330px,.82fr);gap:17px;align-items:start}
+  .calendar-card{padding:18px 17px}
+  .cal-day{min-height:76px;border-radius:10px;padding-top:7px}
+  .cal-blank{min-height:76px}
+  .cal-amount{font-size:10.5px;margin-top:4px}
+  .cal-qty{font-size:9px}
+  .day-detail-card{position:sticky;top:88px}
+  .modal-layer{align-items:center;padding:24px}
+  .modal{border-radius:22px}
+  .modal.settings-modal{height:min(88vh,820px)}
+  .settings-body{padding:20px 24px 30px}
+  .modal-body{padding:20px 24px}
+  .modal-head{padding:20px 24px 14px}
+  .modal-footer{padding:14px 24px 18px}
+  .confirm-modal .modal-footer{padding-top:0}
+  .name-summary{max-width:38%}
+  .record-amount{font-size:14.5px}
+  .entry-row{padding:16px}
+  .row-grid{gap:12px}
+  .page-head h1{font-size:34px}
+}
+
+/* 触屏手机/平板即使处于横屏或桌面版网页，也固定使用底部导航 */
+@media (min-width:1024px) and (hover:none) and (pointer:coarse){
+  .topbar-inner{padding-top:11px;padding-bottom:11px;min-height:62px}
+  .brand{flex:1 1 auto}
+  .desktop-nav{display:none}
+  .bottom-nav{display:block}
+  .app-main{padding-bottom:calc(92px + var(--safe-bottom))}
+  .toast-wrap{bottom:calc(77px + var(--safe-bottom))}
+}
+@media (min-width:1120px){
+  .recent-card{padding:19px 20px 10px}
+  .quick-card{padding:20px}
+  .summary-card{padding:20px}
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important}
+}
+</style>
+</head>
+<body>
+
+<svg class="svg-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 4.5h10a2 2 0 0 1 2 2v13H7a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z"/>
+    <path d="M8 3v3M16 3v3M9 11h5M9 15h3"/>
+  </symbol>
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m3.5 10.5 8.5-7 8.5 7"/><path d="M5.5 9.4V21h13V9.4"/><path d="M9.5 21v-6h5v6"/>
+  </symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 5v14M5 12h14"/>
+  </symbol>
+  <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/><path d="M18 15v6M15 18h6"/>
+  </symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.9 1.9-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2.68v-.09A1.7 1.7 0 0 0 11.2 18.4a1.7 1.7 0 0 0-1.88.34l-.06.06-1.9-1.9.06-.06A1.7 1.7 0 0 0 7.76 15 1.7 1.7 0 0 0 6.2 14H6v-2.7h.2a1.7 1.7 0 0 0 1.56-1.03 1.7 1.7 0 0 0-.34-1.88L7.36 8.3l1.9-1.9.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 12.23 5.3V5h2.68v.3a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.9 1.9-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.94 11h.06v2.7h-.06A1.7 1.7 0 0 0 19.4 15Z"/>
+  </symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3 10h18"/>
+    <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>
+  </symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m15 18-6-6 6-6"/>
+  </symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m9 18 6-6-6-6"/>
+  </symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m6 9 6 6 6-6"/>
+  </symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+  </symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 13 13 20a2 2 0 0 1-2.8 0l-6.2-6.2A2 2 0 0 1 3.4 12V5a2 2 0 0 1 2-2h7a2 2 0 0 1 1.4.6L20 10a2 2 0 0 1 0 3Z"/>
+    <circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+  </symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v6M14 11v6"/>
+  </symbol>
+  <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 6 6 18M6 6l12 12"/>
+  </symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 21h16"/>
+  </symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 21h16"/>
+  </symbol>
+  <symbol id="i-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>
+  </symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3 4.5 6v6c0 4.5 3.2 7.4 7.5 9 4.3-1.6 7.5-4.5 7.5-9V6Z"/><path d="m9 12 2 2 4-4"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m4.5 12.5 5 5 10-11"/>
+  </symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/>
+  </symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>
+  </symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>
+  </symbol>
+  <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/>
+  </symbol>
+  <symbol id="i-yen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="m8.5 7 3.5 5 3.5-5M12 12v6M9 13h6M9 16h6"/>
+  </symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>
+  </symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H18a2 2 0 0 1 2 2v2H6a2 2 0 0 0-2 2v8.5A2.5 2.5 0 0 0 6.5 21H20V8"/><path d="M16 13h2"/>
+  </symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M8 14h8M8 17h5"/>
+  </symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 7v5h-5"/><path d="M19 12a7 7 0 1 0-1.4 4.3"/>
+  </symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 12H5M11 18l-6-6 6-6"/>
+  </symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 7 4 12l5 5"/><path d="M4 12h11a5 5 0 0 1 0 10h-2"/>
+  </symbol>
+</svg>
+
+<div class="boot-screen" id="bootScreen" role="status" aria-live="polite">
+  <div class="boot-inner">
+    <div class="boot-logo"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-logo"></use></svg></div>
+    <div class="spinner" aria-hidden="true"></div>
+    <span>正在读取本地记录…</span>
+  </div>
+</div>
+
+<div class="fatal-screen" id="fatalScreen" hidden>
+  <div class="fatal-card" role="alert">
+    <div class="fatal-icon"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-alert"></use></svg></div>
+    <h2>本地数据无法打开</h2>
+    <p id="fatalMessage">浏览器本地数据库暂时不可用，请刷新页面重试。</p>
+    <button class="btn btn-primary btn-block" id="fatalRetry" type="button">重新加载页面</button>
+  </div>
+</div>
+
+<div class="app" id="appRoot">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg class="icon" aria-hidden="true"><use href="#i-logo"></use></svg></div>
+        <div class="brand-copy">
+          <div class="brand-title">工作记录</div>
+          <div class="brand-sub">本地保存 · 仅自己可见</div>
+        </div>
+      </div>
+      <nav class="desktop-nav" aria-label="主要导航">
+        <button class="nav-btn active" type="button" data-nav="home" aria-current="page">
+          <svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg><span>首页</span>
+        </button>
+        <button class="nav-btn" type="button" data-nav="entry">
+          <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg><span>记一笔</span>
+        </button>
+        <button class="nav-btn" type="button" data-nav="history">
+          <svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg><span>历史记录</span>
+        </button>
+      </nav>
+      <button class="icon-btn" id="settingsBtn" type="button" aria-label="打开设置" title="设置">
+        <svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="view" id="view-home" data-view="home">
+      <div class="page-head">
+        <p class="eyebrow" id="homeDateLabel">今天</p>
+        <h1>工作记录</h1>
+        <p class="page-sub">记录每一次完成，数量和金额自动算好。</p>
+      </div>
+
+      <div class="stats-grid" aria-label="统计概览">
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">今日总数量</span>
+            <span class="stat-icon"><svg class="icon" aria-hidden="true"><use href="#i-box"></use></svg></span>
+          </div>
+          <div class="stat-value tabular" id="statTodayQty">0</div>
+          <div class="stat-unit">今天所有记录的数量合计</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">今日总金额</span>
+            <span class="stat-icon"><svg class="icon" aria-hidden="true"><use href="#i-yen"></use></svg></span>
+          </div>
+          <div class="stat-value tabular" id="statTodayAmount">¥0.00</div>
+          <div class="stat-unit">数量 × 单价自动汇总</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">本月总数量</span>
+            <span class="stat-icon"><svg class="icon" aria-hidden="true"><use href="#i-chart"></use></svg></span>
+          </div>
+          <div class="stat-value tabular" id="statMonthQty">0</div>
+          <div class="stat-unit">当前自然月数量合计</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">本月总金额</span>
+            <span class="stat-icon"><svg class="icon" aria-hidden="true"><use href="#i-wallet"></use></svg></span>
+          </div>
+          <div class="stat-value tabular" id="statMonthAmount">¥0.00</div>
+          <div class="stat-unit">当前自然月金额合计</div>
+        </article>
+      </div>
+
+      <button class="btn btn-primary home-add" id="homeAddBtn" type="button">
+        <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+        <span>新增记录</span>
+      </button>
+
+      <section class="card recent-card" aria-labelledby="recentTitle">
+        <div class="card-head">
+          <div>
+            <h2 id="recentTitle">最近记录</h2>
+            <p class="card-sub" id="homeRecentCount"></p>
+          </div>
+          <button class="text-btn card-link" id="homeViewAllBtn" type="button" hidden>全部记录</button>
+        </div>
+        <div class="record-list" id="homeRecentList"></div>
+      </section>
+    </section>
+
+    <section class="view" id="view-entry" data-view="entry" hidden>
+      <div class="page-head">
+        <p class="eyebrow">快速录入</p>
+        <h1>记一笔</h1>
+        <p class="page-sub">一次可以保存一条，也可以连续添加多条，最后统一保存。</p>
+      </div>
+
+      <form id="entryForm" novalidate>
+        <section class="card date-card" aria-labelledby="entryDateLabel">
+          <label class="field" for="entryDate">
+            <span id="entryDateLabel">记录日期</span>
+            <input class="input" id="entryDate" type="date" required>
+          </label>
+          <button class="text-btn" id="todayBtn" type="button">今天</button>
+          <p class="form-error" id="dateError" role="alert" hidden></p>
+        </section>
+
+        <section class="card quick-card" aria-labelledby="tagsTitle">
+          <div class="card-head">
+            <div>
+              <h2 id="tagsTitle">常用标签</h2>
+              <p class="card-sub">点击会填入当前正在编辑的行</p>
+            </div>
+            <button class="text-btn" id="manageTagsBtn" type="button">
+              <svg class="icon icon-sm" aria-hidden="true"><use href="#i-tag"></use></svg>
+              管理
+            </button>
+          </div>
+          <div class="chip-group" id="tagChips"></div>
+          <div class="soft-divider"></div>
+          <div class="card-head" style="margin-bottom:10px">
+            <div>
+              <h3>最近使用</h3>
+              <p class="card-sub">来自已保存记录，不需要先建标签</p>
+            </div>
+            <svg class="icon icon-sm" aria-hidden="true" style="color:#A8B8CC"><use href="#i-clock"></use></svg>
+          </div>
+          <div class="chip-group" id="recentChips"></div>
+        </section>
+
+        <div class="entry-toolbar">
+          <div>
+            <h2>记录明细</h2>
+            <p class="card-sub">单价最多两位小数，金额由系统计算</p>
+          </div>
+          <button class="btn btn-soft" id="addRowBtn" type="button">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"></use></svg>
+            添加一条
+          </button>
+        </div>
+
+        <div id="entryRows"></div>
+
+        <button class="add-row-btn" id="addRowBottomBtn" type="button">
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"></use></svg>
+          再添加一条
+        </button>
+
+        <section class="card summary-card" aria-labelledby="summaryTitle">
+          <div class="card-head" style="margin-bottom:11px">
+            <div>
+              <h2 id="summaryTitle">本次合计</h2>
+              <p class="card-sub" id="entryRowsCount">共 1 行</p>
+            </div>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span>本次总数量</span>
+              <strong class="tabular" id="entryTotalQty">0</strong>
+            </div>
+            <div class="summary-item">
+              <span>本次总金额</span>
+              <strong class="tabular" id="entryTotalAmount">¥0.00</strong>
+            </div>
+          </div>
+          <p class="summary-hint">所有行填写完整后统一保存；保存成功会保留日期，方便继续录入。</p>
+          <button class="btn btn-primary btn-block" id="saveEntryBtn" type="submit">
+            <span id="saveEntryLabel">保存全部记录</span>
+          </button>
+        </section>
+      </form>
+    </section>
+
+    <section class="view" id="view-history" data-view="history" hidden>
+      <div class="page-head">
+        <p class="eyebrow">回查与统计</p>
+        <h1>历史记录</h1>
+        <p class="page-sub">按日期看每天金额，或按名称查看累计情况。</p>
+      </div>
+
+      <div class="segmented" id="historyTabs" role="tablist" aria-label="历史记录视图">
+        <button class="seg-btn active" type="button" data-history-mode="calendar" role="tab" aria-selected="true" aria-controls="historyCalendarPane">
+          <svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
+          日历查看
+        </button>
+        <button class="seg-btn" type="button" data-history-mode="name" role="tab" aria-selected="false" aria-controls="historyNamePane">
+          <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+          按名称查看
+        </button>
+      </div>
+
+      <div id="historyCalendarPane" role="tabpanel"></div>
+      <div id="historyNamePane" role="tabpanel" hidden></div>
+
+      <section class="card chart-card" id="chartCard" aria-labelledby="chartTitle">
+        <div class="card-head">
+          <div>
+            <h2 id="chartTitle">近 6 个月金额对比</h2>
+            <p class="card-sub">按自然月统计，没有记录的月份为 ¥0.00</p>
+          </div>
+          <span class="settings-badge" id="chartRange">—</span>
+        </div>
+        <div class="chart" id="chartBars" role="img" aria-label="近 6 个月金额对比图"></div>
+        <div class="chart-foot">
+          <span>数据来自本地记录</span>
+          <span>点击日历日期可查看精确金额</span>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="主要导航">
+    <div class="bottom-nav-inner">
+      <button class="nav-btn active" type="button" data-nav="home" aria-current="page">
+        <span class="nav-icon-wrap"><svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg></span>
+        <span>首页</span>
+      </button>
+      <button class="nav-btn" type="button" data-nav="entry">
+        <span class="nav-icon-wrap"><svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg></span>
+        <span>记一笔</span>
+      </button>
+      <button class="nav-btn" type="button" data-nav="history">
+        <span class="nav-icon-wrap"><svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg></span>
+        <span>历史记录</span>
+      </button>
+    </div>
+  </nav>
+</div>
+
+<!-- 设置 -->
+<div class="modal-layer" id="settingsModal" hidden aria-hidden="true">
+  <section class="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <header class="modal-head">
+      <div>
+        <p class="modal-kicker">本地数据</p>
+        <h2 id="settingsTitle">设置</h2>
+      </div>
+      <button class="modal-close" id="settingsClose" type="button" aria-label="关闭设置">
+        <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+      </button>
+    </header>
+    <div class="modal-body settings-body" id="settingsBody">
+      <div class="settings-summary">
+        <div>
+          <span>当前浏览器中的记录</span>
+          <strong id="settingsTotalCount">0 条记录 · 0 个标签</strong>
+        </div>
+        <span class="settings-badge">数据结构 v2</span>
+      </div>
+
+      <section class="settings-section" id="settingsTagsSection" aria-labelledby="settingsTagsTitle">
+        <div class="section-heading">
+          <div>
+            <h3 id="settingsTagsTitle">快捷标签</h3>
+            <p>默认单价可选，删除标签不影响历史。</p>
+          </div>
+          <button class="text-btn" id="settingsAddTag" type="button">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"></use></svg>
+            新增
+          </button>
+        </div>
+        <div id="settingsTagList"></div>
+      </section>
+
+      <hr class="settings-divider">
+
+      <section class="settings-section" aria-labelledby="exportTitle">
+        <h3 id="exportTitle">导出记录</h3>
+        <p>字段包含日期、名称、数量、单价、金额和备注。Excel 为真正的 .xlsx 文件；CSV 使用 UTF-8 BOM，Excel 打开中文不会乱码。</p>
+        <div class="mini-seg" id="exportScope" role="group" aria-label="导出范围">
+          <button type="button" data-export-scope="all" class="active">全部记录</button>
+          <button type="button" data-export-scope="month">指定月份</button>
+        </div>
+        <div class="export-month" id="exportMonthWrap" hidden>
+          <label class="field" for="exportMonth">
+            <span>选择月份</span>
+            <input class="input" id="exportMonth" type="month">
+          </label>
+        </div>
+        <div class="button-row">
+          <button class="btn btn-primary" id="exportXlsx" type="button">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-download"></use></svg>
+            导出 Excel (.xlsx)
+          </button>
+          <button class="btn btn-secondary" id="exportCsv" type="button">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-download"></use></svg>
+            导出 CSV
+          </button>
+        </div>
+      </section>
+
+      <hr class="settings-divider">
+
+      <section class="settings-section" aria-labelledby="backupTitle">
+        <h3 id="backupTitle">备份与恢复</h3>
+        <p>JSON 备份包含全部记录、快捷标签、数据版本和备份时间。恢复前会显示预览并再次确认。</p>
+        <div class="button-row">
+          <button class="btn btn-soft" id="backupJsonBtn" type="button">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-download"></use></svg>
+            导出 JSON 备份
+          </button>
+          <button class="btn btn-secondary" id="importTrigger" type="button">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-upload"></use></svg>
+            选择备份文件
+          </button>
+        </div>
+        <p class="form-error" id="importError" role="alert" hidden></p>
+        <div id="importPreview" hidden></div>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </section>
+
+      <hr class="settings-divider">
+
+      <section class="storage-note" aria-labelledby="storageTitle">
+        <div class="note-icon"><svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg></div>
+        <div>
+          <h3 id="storageTitle">数据保存说明</h3>
+          <p><strong>数据保存在当前浏览器中。更换设备、浏览器或清理网站数据前，请先导出备份。</strong></p>
+          <p>记录和标签保存在当前设备和当前网站来源的 IndexedDB 中，不会上传到服务器。更换手机、电脑、浏览器或网址域名，数据不会自动同步。</p>
+          <p class="small">建议定期导出 JSON 备份。清理浏览器网站数据可能删除本地记录。</p>
+        </div>
+      </section>
+    </div>
+  </section>
+</div>
+
+<!-- 标签编辑 -->
+<div class="modal-layer centered" id="tagModal" hidden aria-hidden="true" data-dismissible="false">
+  <section class="modal small-modal" role="dialog" aria-modal="true" aria-labelledby="tagModalTitle">
+    <header class="modal-head">
+      <div>
+        <p class="modal-kicker">快捷入口</p>
+        <h2 id="tagModalTitle">新增标签</h2>
+      </div>
+      <button class="modal-close" id="tagClose" type="button" aria-label="关闭标签窗口">
+        <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+      </button>
+    </header>
+    <form id="tagForm" novalidate>
+      <div class="modal-body">
+        <label class="field" for="tagName">
+          <span>标签名称 <em style="font-style:normal;color:var(--danger)">*</em></span>
+          <input class="input" id="tagName" type="text" maxlength="100" autocomplete="off" placeholder="例如：常用项目名称" data-autofocus>
+        </label>
+        <label class="field" for="tagPrice">
+          <span>默认单价（可选）</span>
+          <div class="input-wrap">
+            <span class="input-prefix">¥</span>
+            <input class="input" id="tagPrice" type="text" inputmode="decimal" autocomplete="off" placeholder="不填则不设默认价">
+          </div>
+        </label>
+        <p class="field-help">点击该标签时，名称会自动填入；设置默认单价后会优先带出，仍可随时修改。修改标签不会改变历史记录。</p>
+        <p class="form-error" id="tagFormError" role="alert" hidden></p>
+      </div>
+      <footer class="modal-footer">
+        <button class="btn btn-secondary" id="tagCancel" type="button">取消</button>
+        <button class="btn btn-primary" id="tagSaveBtn" type="submit">保存标签</button>
+      </footer>
+    </form>
+  </section>
+</div>
+
+<!-- 编辑记录 -->
+<div class="modal-layer centered" id="editModal" hidden aria-hidden="true" data-dismissible="false">
+  <section class="modal edit-modal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+    <header class="modal-head">
+      <div>
+        <p class="modal-kicker">修改后统计自动重算</p>
+        <h2 id="editModalTitle">编辑记录</h2>
+      </div>
+      <button class="modal-close" id="editClose" type="button" aria-label="关闭编辑窗口">
+        <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+      </button>
+    </header>
+    <form id="editForm" novalidate>
+      <div class="modal-body">
+        <label class="field" for="editDate">
+          <span>日期</span>
+          <input class="input" id="editDate" type="date" required>
+        </label>
+        <label class="field" for="editName">
+          <span>名称</span>
+          <input class="input" id="editName" type="text" maxlength="200" autocomplete="off" required data-autofocus>
+        </label>
+        <div class="row-grid">
+          <label class="field" for="editQty">
+            <span>数量</span>
+            <input class="input" id="editQty" type="text" inputmode="numeric" autocomplete="off" required>
+          </label>
+          <label class="field" for="editPrice">
+            <span>单价（元）</span>
+            <input class="input" id="editPrice" type="text" inputmode="decimal" autocomplete="off" required>
+          </label>
+        </div>
+        <div class="readonly-amount">
+          <span>自动计算金额</span>
+          <strong class="tabular" id="editAmount">—</strong>
+        </div>
+        <label class="field" for="editNote">
+          <span>备注（可选）</span>
+          <input class="input" id="editNote" type="text" maxlength="300" autocomplete="off" placeholder="补充说明（可选）">
+        </label>
+        <p class="form-error" id="editError" role="alert" hidden></p>
+      </div>
+      <footer class="modal-footer edit-footer">
+        <button class="link-danger" id="editDeleteBtn" type="button">删除记录</button>
+        <div class="footer-actions">
+          <button class="btn btn-secondary auto" id="editCancel" type="button">取消</button>
+          <button class="btn btn-primary auto" id="editSaveBtn" type="submit">保存修改</button>
+        </div>
+      </footer>
+    </form>
+  </section>
+</div>
+
+<!-- 确认 -->
+<div class="modal-layer centered" id="confirmModal" hidden aria-hidden="true" data-dismissible="true">
+  <section class="modal confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+    <div class="modal-body">
+      <div class="confirm-icon" id="confirmIcon">
+        <svg class="icon icon-lg" aria-hidden="true"><use href="#i-alert"></use></svg>
+      </div>
+      <h2 id="confirmTitle">确认操作</h2>
+      <p id="confirmMessage"></p>
+    </div>
+    <footer class="modal-footer">
+      <button class="btn btn-secondary" id="confirmCancel" type="button" data-autofocus>取消</button>
+      <button class="btn btn-primary" id="confirmOk" type="button">确定</button>
+    </footer>
+  </section>
+</div>
+
+<div class="toast-wrap" id="toastWrap" aria-live="polite" aria-atomic="false"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const DB_NAME = 'work-record-db';
+  const DB_VERSION = 1;
+  const STORE_RECORDS = 'records';
+  const STORE_TAGS = 'tags';
+  const DATA_VERSION = 2;
+  const APP_NAME = '工作记录';
+
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+  const el = {};
+  let db = null;
+  let currentEditId = null;
+  let editingTagId = null;
+  let confirmResolver = null;
+  let openLayers = [];
+  let entrySaving = false;
+  let tagSaving = false;
+  let editSaving = false;
+  let importBusy = false;
+
+  const state = {
+    view: 'home',
+    records: [],
+    tags: [],
+    historyMode: 'calendar',
+    calYear: new Date().getFullYear(),
+    calMonth: new Date().getMonth(),
+    selectedDate: todayStr(),
+    nameQuery: '',
+    nameDetail: null,
+    recentNames: [],
+    nameGroups: [],
+    visibleGroups: [],
+    exportScope: 'all',
+    pendingImport: null,
+    settingsOpen: false,
+    reportMode: 'month'
+  };
+
+  const entry = {
+    rows: [],
+    activeUid: null
+  };
+
+  /* ---------------- small utilities ---------------- */
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+  }
+
+  function icon(name, extra = '') {
+    return `<svg class="icon ${extra}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+  }
+
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function todayStr() {
+    return dateToStr(new Date());
+  }
+
+  function dateToStr(d) {
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  }
+
+  function parseDateParts(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+    const parts = value.split('-').map(Number);
+    const [year, month, day] = parts;
+    if (year < 1900 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+    const d = new Date(year, month - 1, day, 12, 0, 0, 0);
+    if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+    return { year, month, day, date: d };
+  }
+
+  function isValidDateString(value) {
+    return !!parseDateParts(value);
+  }
+
+  const WEEKDAY_LONG = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  const WEEKDAY_SHORT = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+  function weekdayOf(value, long = false) {
+    const p = parseDateParts(value);
+    if (!p) return '';
+    return (long ? WEEKDAY_LONG : WEEKDAY_SHORT)[p.date.getDay()];
+  }
+
+  function formatLongDate(value) {
+    const p = parseDateParts(value);
+    if (!p) return value || '';
+    return `${p.year}年${p.month}月${p.day}日`;
+  }
+
+  function formatShortDate(value) {
+    const p = parseDateParts(value);
+    if (!p) return value || '';
+    return `${p.month}月${p.day}日`;
+  }
+
+  function monthLabel(year, monthIndex) {
+    return `${year}年${monthIndex + 1}月`;
+  }
+
+  function monthKeyOf(value) {
+    return typeof value === 'string' && value.length >= 7 ? value.slice(0, 7) : '';
+  }
+
+  function monthKeyLabel(key) {
+    if (!/^\d{4}-\d{2}$/.test(key)) return key || '';
+    const [y, m] = key.split('-');
+    return `${y}年${Number(m)}月`;
+  }
+
+  function nowIso() {
+    return new Date().toISOString();
+  }
+
+  function uid(prefix = 'r') {
+    try {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return `${prefix}_${window.crypto.randomUUID()}`;
+      }
+    } catch (_) { /* fall through */ }
+    return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  }
+
+  function formatMoney(cents) {
+    const n = Number(cents);
+    if (!Number.isFinite(n)) return '¥0.00';
+    const sign = n < 0 ? '-' : '';
+    const abs = Math.abs(Math.round(n));
+    const yuan = Math.floor(abs / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `¥${sign}${yuan}.${pad2(abs % 100)}`;
+  }
+
+  function formatMoneyCompact(cents) {
+    const n = Number(cents);
+    if (!Number.isFinite(n)) return '¥0';
+    const yuan = n / 100;
+    const abs = Math.abs(yuan);
+    const sign = yuan < 0 ? '-' : '';
+    let core;
+    if (abs >= 100000000) core = trimNumber(abs / 100000000) + '亿';
+    else if (abs >= 10000) core = trimNumber(abs / 10000) + '万';
+    else if (abs >= 1000) core = trimNumber(abs / 1000) + 'k';
+    else if (abs >= 100) core = String(Math.round(abs));
+    else if (abs >= 10) core = trimNumber(abs.toFixed(1));
+    else core = trimNumber(abs.toFixed(2));
+    return `¥${sign}${core}`;
+  }
+
+  function trimNumber(n) {
+    return String(Number(n).toFixed(2)).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+  }
+
+  function formatQty(qty) {
+    const n = Number(qty);
+    if (!Number.isFinite(n)) return '0';
+    return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function priceInputValue(cents) {
+    return (Number(cents) / 100).toFixed(2);
+  }
+
+  function parsePositiveInt(raw) {
+    const s = String(raw == null ? '' : raw).trim();
+    if (!s) return { ok: false, error: '请填写数量' };
+    if (!/^\d+$/.test(s)) return { ok: false, error: '数量必须是正整数' };
+    const n = Number(s);
+    if (!Number.isSafeInteger(n) || n <= 0) return { ok: false, error: '数量必须是正整数' };
+    return { ok: true, value: n };
+  }
+
+  function parseUnitPrice(raw) {
+    const s = String(raw == null ? '' : raw).trim();
+    if (!s) return { ok: false, error: '请填写单价' };
+    if (!/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(s)) {
+      return { ok: false, error: '单价须为 0 或正数，最多两位小数' };
+    }
+    const pieces = s.split('.');
+    const whole = Number(pieces[0] || '0');
+    const frac = (pieces[1] || '').padEnd(2, '0');
+    const cents = whole * 100 + Number(frac);
+    if (!Number.isSafeInteger(cents) || cents < 0) {
+      return { ok: false, error: '单价数值过大' };
+    }
+    return { ok: true, value: cents };
+  }
+
+  function lineCalculation(qtyRaw, priceRaw) {
+    const qty = parsePositiveInt(qtyRaw);
+    const price = parseUnitPrice(priceRaw);
+    if (!qty.ok || !price.ok) return { ok: false, qty: qty.ok ? qty.value : null, price: price.ok ? price.value : null, amount: null };
+    const amount = qty.value * price.value;
+    if (!Number.isSafeInteger(amount)) {
+      return { ok: false, qty: qty.value, price: price.value, amount: null, error: '金额超出可计算范围' };
+    }
+    return { ok: true, qty: qty.value, price: price.value, amount };
+  }
+
+  function sumRecords(records) {
+    let quantity = 0;
+    let amount = 0;
+    for (const r of records) {
+      quantity += Number(r.quantity) || 0;
+      amount += Number(r.amountCents) || 0;
+    }
+    return { quantity, amount, count: records.length };
+  }
+
+  function sortByDateDesc(a, b) {
+    return String(b.date).localeCompare(String(a.date)) ||
+      String(b.createdAt || '').localeCompare(String(a.createdAt || '')) ||
+      String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+  }
+
+  function sortByCreatedAsc(a, b) {
+    return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+  }
+
+  function sortByActivityDesc(a, b) {
+    return String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')) ||
+      sortByDateDesc(a, b);
+  }
+
+  function normalizeSearch(value) {
+    return String(value == null ? '' : value).trim().toLocaleLowerCase('zh-CN');
+  }
+
+  function truncateText(value, max = 22) {
+    const s = String(value == null ? '' : value);
+    return s.length > max ? s.slice(0, max) + '…' : s;
+  }
+
+  function errorMessage(err) {
+    if (!err) return '未知错误';
+    if (err.name === 'QuotaExceededError') return '浏览器本地存储空间不足，请先导出备份并清理部分空间后重试。';
+    if (err.name === 'SecurityError') return '浏览器阻止了本地存储访问，请检查隐私设置后重试。';
+    return err.message || String(err);
+  }
+
+  /* ---------------- IndexedDB ---------------- */
+  function openDatabase() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) {
+        reject(new Error('当前浏览器不支持 IndexedDB，无法保存本地记录。'));
+        return;
+      }
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(new Error('读取本地数据库超时，请关闭其他页面后重新加载。'));
+      }, 12000);
+
+      let request;
+      try {
+        request = indexedDB.open(DB_NAME, DB_VERSION);
+      } catch (err) {
+        clearTimeout(timer);
+        settled = true;
+        reject(err);
+        return;
+      }
+
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains(STORE_RECORDS)) {
+          const store = database.createObjectStore(STORE_RECORDS, { keyPath: 'id' });
+          store.createIndex('date', 'date', { unique: false });
+          store.createIndex('name', 'name', { unique: false });
+          store.createIndex('updatedAt', 'updatedAt', { unique: false });
+        }
+        if (!database.objectStoreNames.contains(STORE_TAGS)) {
+          const store = database.createObjectStore(STORE_TAGS, { keyPath: 'id' });
+          store.createIndex('name', 'name', { unique: false });
+          store.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+      };
+
+      request.onsuccess = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        const database = request.result;
+        database.onversionchange = () => {
+          try { database.close(); } catch (_) { /* ignore */ }
+          if (db === database) db = null;
+          showFatal('本地数据库版本已更新，请重新加载页面后继续使用。');
+        };
+        resolve(database);
+      };
+
+      request.onerror = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(request.error || new Error('无法打开本地数据库。'));
+      };
+
+      request.onblocked = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(new Error('本地数据库被其他页面占用，请关闭其他页面后重试。'));
+      };
+    });
+  }
+
+  function txDone(tx) {
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('本地数据库写入失败。'));
+      tx.onabort = () => reject(tx.error || new Error('本地数据库事务已取消。'));
+    });
+  }
+
+  async function readAllData() {
+    if (!db) throw new Error('本地数据库尚未打开。');
+    const tx = db.transaction([STORE_RECORDS, STORE_TAGS], 'readonly');
+    const recordsRequest = tx.objectStore(STORE_RECORDS).getAll();
+    const tagsRequest = tx.objectStore(STORE_TAGS).getAll();
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('读取本地数据失败。'));
+      tx.onabort = () => reject(tx.error || new Error('读取本地数据被取消。'));
+    });
+    state.records = Array.isArray(recordsRequest.result) ? recordsRequest.result : [];
+    state.tags = Array.isArray(tagsRequest.result) ? tagsRequest.result : [];
+  }
+
+  async function addRecordsToDb(records) {
+    if (!db) throw new Error('本地数据库尚未打开。');
+    const tx = db.transaction(STORE_RECORDS, 'readwrite');
+    const store = tx.objectStore(STORE_RECORDS);
+    try {
+      for (const record of records) store.add(record);
+    } catch (err) {
+      try { tx.abort(); } catch (_) { /* ignore */ }
+      throw err;
+    }
+    await txDone(tx);
+  }
+
+  async function addRecordToDb(record) {
+    if (!db) throw new Error('本地数据库尚未打开。');
+    const tx = db.transaction(STORE_RECORDS, 'readwrite');
+    tx.objectStore(STORE_RECORDS).add(record);
+    await txDone(tx);
+  }
+
+  async function putRecordToDb(record) {
+    if (!db) throw new Error('本地数据库尚未打开。');
+    const tx = db.transaction(STORE_RECORDS, 'readwrite');
+    tx.objectStore(STORE_RECORDS).put(record);
+    await txDone(tx);
+  }
+
+  async function deleteRecordFromDb(id) {
+    if (!db) throw new Error('本地数据库尚未打开。');
+    const tx = db.transaction(STORE_RECORDS, 'readwrite');
+    tx.objectStore(STORE_RECORDS).delete(id);
+    await txDone(tx);
+  }
+
+  async function addTagToDb(tag) {
+    if (!db) throw new Error('本地数据库尚未打开。');
+    const tx = db.transaction(STORE_TAGS, 'readwrite');
+    tx.objectStore(STORE_TAGS).add(tag);
+    await txDone(tx);
+  }
+
+  async function putTagToDb(tag) {
+    if (!db) throw new Error('本地数据库尚未打开。');
+    const tx = db.transaction(STORE_TAGS, 'readwrite');
+    tx.objectStore(STORE_TAGS).put(tag);
+    await txDone(tx);
+  }
+
+  async function deleteTagFromDb(id) {
+    if (!db) throw new Error('本地数据库尚未打开。');
+    const tx = db.transaction(STORE_TAGS, 'readwrite');
+    tx.objectStore(STORE_TAGS).delete(id);
+    await txDone(tx);
+  }
+
+  async function writeImportData(mode, records, tags) {
+    if (!db) throw new Error('本地数据库尚未打开。');
+    const tx = db.transaction([STORE_RECORDS, STORE_TAGS], 'readwrite');
+    const recordStore = tx.objectStore(STORE_RECORDS);
+    const tagStore = tx.objectStore(STORE_TAGS);
+    if (mode === 'overwrite') {
+      recordStore.clear();
+      tagStore.clear();
+    }
+    try {
+      for (const tag of tags) tagStore.put(tag);
+      for (const record of records) recordStore.put(record);
+    } catch (err) {
+      try { tx.abort(); } catch (_) { /* ignore */ }
+      throw err;
+    }
+    await txDone(tx);
+  }
+
+  /* ---------------- toast / overlays ---------------- */
+  function showToast(message, options = {}) {
+    if (!el.toastWrap) return;
+    const type = options.type || 'info';
+    const duration = Number.isFinite(options.duration) ? options.duration : 3800;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.setAttribute('role', 'status');
+    const iconName = type === 'success' ? 'check' : type === 'error' ? 'alert' : 'info';
+    const iconWrap = document.createElement('span');
+    iconWrap.className = 'toast-icon';
+    iconWrap.innerHTML = icon(iconName, 'icon-sm');
+    const text = document.createElement('span');
+    text.className = 'toast-text';
+    text.textContent = String(message);
+    toast.append(iconWrap, text);
+
+    let timer = null;
+    const cleanup = () => {
+      if (timer) clearTimeout(timer);
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 180);
+    };
+
+    if (options.action && typeof options.action.onClick === 'function') {
+      const action = document.createElement('button');
+      action.type = 'button';
+      action.className = 'toast-action';
+      action.textContent = options.action.label || '撤销';
+      action.addEventListener('click', () => {
+        cleanup();
+        try {
+          const ret = options.action.onClick();
+          if (ret && typeof ret.catch === 'function') ret.catch(() => {});
+        } catch (err) {
+          console.error(err);
+        }
+      });
+      toast.appendChild(action);
+    }
+
+    el.toastWrap.appendChild(toast);
+    while (el.toastWrap.children.length > 2) {
+      const oldest = Array.from(el.toastWrap.children).find(node => !node.querySelector('.toast-action')) ||
+        el.toastWrap.firstElementChild;
+      if (!oldest) break;
+      oldest.remove();
+    }
+    requestAnimationFrame(() => toast.classList.add('show'));
+    timer = setTimeout(cleanup, duration);
+  }
+
+  function isLayerOpen(layer) {
+    return openLayers.includes(layer);
+  }
+
+  function focusableIn(layer) {
+    return $$('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])', layer)
+      .filter(node => node.offsetParent !== null || node === document.activeElement);
+  }
+
+  function openOverlay(layer) {
+    if (!layer || isLayerOpen(layer)) return;
+    layer._restoreFocus = document.activeElement && document.activeElement.focus ? document.activeElement : null;
+    layer.hidden = false;
+    layer.setAttribute('aria-hidden', 'false');
+    openLayers.push(layer);
+    document.body.classList.add('modal-open');
+    setTimeout(() => {
+      if (!isLayerOpen(layer)) return;
+      const preferred = layer.querySelector('[data-autofocus]');
+      const target = preferred || focusableIn(layer)[0] || layer.querySelector('.modal');
+      if (target && target.focus) target.focus({ preventScroll: true });
+    }, 30);
+  }
+
+  function closeOverlay(layer) {
+    if (!layer || !isLayerOpen(layer)) return;
+    openLayers = openLayers.filter(item => item !== layer);
+    layer.hidden = true;
+    layer.setAttribute('aria-hidden', 'true');
+    if (openLayers.length === 0) document.body.classList.remove('modal-open');
+    const restore = layer._restoreFocus;
+    layer._restoreFocus = null;
+    if (typeof layer._onClose === 'function') layer._onClose();
+    const topLayer = openLayers[openLayers.length - 1];
+    if (restore && restore.isConnected && (!topLayer || topLayer.contains(restore))) {
+      setTimeout(() => {
+        try { restore.focus({ preventScroll: true }); } catch (_) { /* ignore */ }
+      }, 20);
+    }
+  }
+
+  function confirmDialog(config = {}) {
+    if (confirmResolver) {
+      const previous = confirmResolver;
+      confirmResolver = null;
+      previous(false);
+    }
+    const title = config.title || '确认操作';
+    const message = config.message || '';
+    const confirmText = config.confirmText || '确定';
+    const cancelText = config.cancelText || '取消';
+    const danger = !!config.danger;
+    el.confirmTitle.textContent = title;
+    el.confirmMessage.textContent = message;
+    el.confirmCancel.textContent = cancelText;
+    el.confirmOk.textContent = confirmText;
+    el.confirmOk.className = `btn ${danger ? 'btn-danger' : 'btn-primary'}`;
+    el.confirmIcon.className = `confirm-icon${danger ? ' danger' : ''}`;
+    el.confirmIcon.innerHTML = icon(danger ? 'alert' : 'info', 'icon-lg');
+    openOverlay(el.confirmModal);
+    return new Promise(resolve => {
+      confirmResolver = resolve;
+    });
+  }
+
+  function settleConfirm(value) {
+    const resolver = confirmResolver;
+    confirmResolver = null;
+    closeOverlay(el.confirmModal);
+    if (resolver) resolver(value);
+  }
+
+  function syncOpenPageScroll() {
+    if (openLayers.length) document.body.classList.add('modal-open');
+    else document.body.classList.remove('modal-open');
+  }
+
+  /* ---------------- rendering: home ---------------- */
+  function renderHome() {
+    const today = todayStr();
+    const currentMonth = today.slice(0, 7);
+    const todayRecords = state.records.filter(r => r.date === today);
+    const monthRecords = state.records.filter(r => monthKeyOf(r.date) === currentMonth);
+    const todaySum = sumRecords(todayRecords);
+    const monthSum = sumRecords(monthRecords);
+
+    el.homeDateLabel.textContent = `${formatLongDate(today)} · ${weekdayOf(today, true)}`;
+    setStatValue(el.statTodayQty, formatQty(todaySum.quantity));
+    setStatValue(el.statTodayAmount, formatMoney(todaySum.amount));
+    setStatValue(el.statMonthQty, formatQty(monthSum.quantity));
+    setStatValue(el.statMonthAmount, formatMoney(monthSum.amount));
+
+    const recent = [...state.records].sort(sortByDateDesc).slice(0, 5);
+    el.homeViewAllBtn.hidden = state.records.length === 0;
+    el.homeRecentCount.textContent = state.records.length
+      ? `共 ${state.records.length} 条 · 点按记录可编辑`
+      : '';
+
+    if (!recent.length) {
+      el.homeRecentList.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">${icon('file', 'icon-lg')}</div>
+          <h3>还没有记录</h3>
+          <p>点击上方「新增记录」开始添加。所有数据只保存在当前浏览器中。</p>
+          <button class="btn btn-soft" type="button" data-nav="entry">${icon('plus', 'icon-sm')}记第一笔</button>
+        </div>`;
+      return;
+    }
+
+    el.homeRecentList.innerHTML = recent.map(r => homeRecordHTML(r, today)).join('');
+  }
+
+  function setStatValue(node, text) {
+    if (!node) return;
+    node.textContent = text;
+    node.title = text;
+    node.classList.toggle('is-long', text.length > 11);
+  }
+
+  function homeRecordHTML(record, today) {
+    const isToday = record.date === today;
+    const dateTop = isToday ? '今天' : formatShortDate(record.date).replace('月', '/').replace('日', '');
+    return `
+      <button class="record-row" type="button" data-edit-record="${esc(record.id)}" aria-label="编辑 ${esc(record.name)} 的记录">
+        <span class="record-date">
+          <strong>${esc(dateTop)}</strong>
+          <span>${esc(weekdayOf(record.date))}</span>
+        </span>
+        <span class="record-main">
+          <span class="record-name">${esc(record.name)}</span>
+          <span class="record-meta">
+            <span>数量 ${formatQty(record.quantity)}</span>
+            <span class="dot" aria-hidden="true"></span>
+            <span>单价 ${formatMoney(record.unitCents)}</span>
+            ${record.note && String(record.note).trim() ? `<span class="record-note" title="${esc(record.note)}">备注：${esc(record.note)}</span>` : ''}
+          </span>
+        </span>
+        <span class="record-end">
+          <span class="record-amount">${formatMoney(record.amountCents)}</span>
+          ${icon('chevron-right')}
+        </span>
+      </button>`;
+  }
+
+  /* ---------------- rendering: entry ---------------- */
+  function makeEmptyRow() {
+    return { uid: uid('row'), name: '', qty: '', unit: '', note: '', error: null };
+  }
+
+  function resetEntryRows() {
+    entry.rows = [makeEmptyRow()];
+    entry.activeUid = entry.rows[0].uid;
+    renderEntryRows();
+  }
+
+  function renderEntryAux() {
+    if (!el.entryDate.value) el.entryDate.value = todayStr();
+
+    const tags = [...state.tags].sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+    if (!tags.length) {
+      el.tagChips.innerHTML = `
+        <div class="chip-empty">
+          ${icon('tag', 'icon-sm')}
+          <span>还没有常用标签，点右上角「管理」添加</span>
+        </div>`;
+    } else {
+      el.tagChips.innerHTML = tags.map(tag => `
+        <button class="chip" type="button" data-tag-id="${esc(tag.id)}" title="填入当前行">
+          <span class="chip-name">${esc(tag.name)}</span>
+          ${tag.defaultUnitCents == null ? '' : `<span class="chip-price">${formatMoney(tag.defaultUnitCents)}</span>`}
+        </button>`).join('');
+    }
+
+    state.recentNames = getRecentNames(8);
+    if (!state.recentNames.length) {
+      el.recentChips.innerHTML = `
+        <div class="chip-empty">
+          ${icon('clock', 'icon-sm')}
+          <span>保存记录后，这里会自动出现最近使用的名称</span>
+        </div>`;
+    } else {
+      el.recentChips.innerHTML = state.recentNames.map((item, index) => `
+        <button class="chip" type="button" data-recent-index="${index}" title="填入当前行并带出最近单价">
+          <span class="chip-name">${esc(item.name)}</span>
+          <span class="chip-price">${formatMoney(item.unitCents)}</span>
+        </button>`).join('');
+    }
+
+    updateCopyButtons();
+  }
+
+  function getRecentNames(limit = 8) {
+    const sorted = [...state.records].sort(sortByActivityDesc);
+    const seen = new Set();
+    const result = [];
+    for (const r of sorted) {
+      if (seen.has(r.name)) continue;
+      seen.add(r.name);
+      result.push({ name: r.name, unitCents: r.unitCents, record: r });
+      if (result.length >= limit) break;
+    }
+    return result;
+  }
+
+  function latestSavedRecord() {
+    return [...state.records].sort(sortByActivityDesc)[0] || null;
+  }
+
+  function latestUnitForName(name) {
+    const target = String(name || '').trim();
+    if (!target) return null;
+    const records = state.records.filter(r => r.name === target).sort(sortByActivityDesc);
+    return records.length ? records[0].unitCents : null;
+  }
+
+  function getRowByUid(uidValue) {
+    return entry.rows.find(r => r.uid === uidValue) || null;
+  }
+
+  function renderEntryRows(focusUid = null, focusField = 'name') {
+    const latest = latestSavedRecord();
+    const html = entry.rows.map((row, index) => {
+      const calc = lineCalculation(row.qty, row.unit);
+      const copyLabel = index === 0 ? '复制上一条' : '复制上一行';
+      const copyDisabled = index === 0 && !latest ? ' disabled' : '';
+      const copyTitle = index === 0
+        ? (latest ? '复制最近一条已保存记录的名称和单价' : '还没有已保存记录可复制')
+        : '复制上一行的名称和单价';
+      return `
+        <div class="entry-row${row.uid === entry.activeUid ? ' is-active' : ''}${row.error ? ' has-error' : ''}" data-row-uid="${esc(row.uid)}">
+          <div class="entry-row-head">
+            <span class="row-index"><span class="num">${pad2(index + 1)}</span>第 ${index + 1} 条</span>
+            <span class="row-actions">
+              <button class="row-action" type="button" data-action="copy" title="${esc(copyTitle)}"${copyDisabled}>
+                ${icon('copy')}<span>${copyLabel}</span>
+              </button>
+              <button class="row-action danger" type="button" data-action="remove" aria-label="删除第 ${index + 1} 条" title="删除这一行">
+                ${icon('trash')}
+              </button>
+            </span>
+          </div>
+          <label class="field">
+            <span>名称 <em style="font-style:normal;color:var(--danger)">*</em></span>
+            <input class="input" type="text" data-field="name" value="${esc(row.name)}" maxlength="200" autocomplete="off"
+              placeholder="输入名称，例如项目或产品" aria-label="第 ${index + 1} 条名称" required>
+          </label>
+          <div class="row-grid">
+            <label class="field">
+              <span>数量 <em style="font-style:normal;color:var(--danger)">*</em></span>
+              <input class="input" type="text" data-field="qty" value="${esc(row.qty)}" inputmode="numeric" autocomplete="off"
+                placeholder="正整数" aria-label="第 ${index + 1} 条数量" required>
+            </label>
+            <label class="field">
+              <span>单价（元） <em style="font-style:normal;color:var(--danger)">*</em></span>
+              <input class="input" type="text" data-field="unit" value="${esc(row.unit)}" inputmode="decimal" autocomplete="off"
+                placeholder="0.00" aria-label="第 ${index + 1} 条单价" required>
+            </label>
+          </div>
+          <label class="field">
+            <span>备注（可选）</span>
+            <input class="input" type="text" data-field="note" value="${esc(row.note || '')}" maxlength="300" autocomplete="off"
+              placeholder="补充说明（可选）" aria-label="第 ${index + 1} 条备注">
+          </label>
+          <div class="row-total">
+            <span>小计</span>
+            <strong class="tabular" data-subtotal>${calc.ok ? formatMoney(calc.amount) : '—'}</strong>
+          </div>
+          <p class="form-error row-error" role="alert"${row.error ? '' : ' hidden'}>${row.error ? esc(row.error.message) : ''}</p>
+        </div>`;
+    }).join('');
+
+    el.entryRows.innerHTML = html;
+    el.entryRowsCount.textContent = `共 ${entry.rows.length} 行`;
+    updateEntrySummary();
+    syncActiveRow();
+
+    if (focusUid) {
+      requestAnimationFrame(() => {
+        const rowEl = el.entryRows.querySelector(`[data-row-uid="${cssEscape(focusUid)}"]`);
+        const field = rowEl && rowEl.querySelector(`[data-field="${focusField}"]`);
+        if (field) {
+          field.focus({ preventScroll: false });
+          if (focusField === 'qty') {
+            try { field.select(); } catch (_) { /* ignore */ }
+          }
+        }
+      });
+    }
+  }
+
+  function cssEscape(value) {
+    if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);
+    return String(value).replace(/["\\]/g, '\\$&');
+  }
+
+  function syncActiveRow() {
+    $$('.entry-row', el.entryRows).forEach(row => {
+      row.classList.toggle('is-active', row.getAttribute('data-row-uid') === entry.activeUid);
+    });
+  }
+
+  function updateCopyButtons() {
+    const latest = latestSavedRecord();
+    $$('[data-action="copy"]', el.entryRows).forEach(btn => {
+      const rowEl = btn.closest('[data-row-uid]');
+      if (!rowEl) return;
+      const index = entry.rows.findIndex(r => r.uid === rowEl.getAttribute('data-row-uid'));
+      if (index === 0) btn.disabled = !latest;
+    });
+  }
+
+  function updateEntrySummary() {
+    let qty = 0;
+    let amount = 0;
+    for (const row of entry.rows) {
+      const calc = lineCalculation(row.qty, row.unit);
+      if (calc.ok) {
+        qty += calc.qty;
+        amount += calc.amount;
+      }
+    }
+    el.entryTotalQty.textContent = formatQty(qty);
+    el.entryTotalAmount.textContent = formatMoney(amount);
+    el.entryTotalAmount.classList.toggle('is-long', el.entryTotalAmount.textContent.length > 11);
+    el.entryRowsCount.textContent = `共 ${entry.rows.length} 行`;
+  }
+
+  function updateRowSubtotal(row) {
+    const rowEl = el.entryRows.querySelector(`[data-row-uid="${cssEscape(row.uid)}"]`);
+    if (!rowEl) return;
+    const subtotal = rowEl.querySelector('[data-subtotal]');
+    const calc = lineCalculation(row.qty, row.unit);
+    if (subtotal) subtotal.textContent = calc.ok ? formatMoney(calc.amount) : '—';
+    updateEntrySummary();
+  }
+
+  function setRowError(row, field, message) {
+    row.error = { field, message };
+    const rowEl = el.entryRows.querySelector(`[data-row-uid="${cssEscape(row.uid)}"]`);
+    if (!rowEl) return;
+    rowEl.classList.add('has-error');
+    const err = rowEl.querySelector('.row-error');
+    if (err) {
+      err.textContent = message;
+      err.hidden = false;
+    }
+    if (field) {
+      const input = rowEl.querySelector(`[data-field="${field}"]`);
+      if (input) input.classList.add('invalid');
+    }
+  }
+
+  function clearEntryErrors() {
+    for (const row of entry.rows) row.error = null;
+    $$('.entry-row', el.entryRows).forEach(rowEl => {
+      rowEl.classList.remove('has-error');
+      const err = rowEl.querySelector('.row-error');
+      if (err) {
+        err.textContent = '';
+        err.hidden = true;
+      }
+      $$('.input.invalid', rowEl).forEach(input => input.classList.remove('invalid'));
+    });
+    el.dateError.hidden = true;
+    el.entryDate.classList.remove('invalid');
+  }
+
+  function focusRowField(uidValue, field) {
+    const rowEl = el.entryRows.querySelector(`[data-row-uid="${cssEscape(uidValue)}"]`);
+    const target = rowEl && rowEl.querySelector(`[data-field="${field}"]`);
+    if (target) {
+      target.focus({ preventScroll: false });
+      target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
+    }
+  }
+
+  function setActiveRow(uidValue) {
+    if (!getRowByUid(uidValue)) return;
+    entry.activeUid = uidValue;
+    syncActiveRow();
+  }
+
+  function activeRow() {
+    return getRowByUid(entry.activeUid) || entry.rows[0] || null;
+  }
+
+  function fillActiveRow(name, priceCents) {
+    let row = activeRow();
+    if (!row) {
+      row = makeEmptyRow();
+      entry.rows.push(row);
+      entry.activeUid = row.uid;
+      renderEntryRows(row.uid, 'qty');
+    }
+    row.name = String(name || '').trim();
+    row.unit = priceCents == null ? '' : priceInputValue(priceCents);
+    row.error = null;
+    const rowEl = el.entryRows.querySelector(`[data-row-uid="${cssEscape(row.uid)}"]`);
+    if (rowEl) {
+      const nameInput = rowEl.querySelector('[data-field="name"]');
+      const unitInput = rowEl.querySelector('[data-field="unit"]');
+      if (nameInput) nameInput.value = row.name;
+      if (unitInput) unitInput.value = row.unit;
+      rowEl.classList.remove('has-error');
+      const err = rowEl.querySelector('.row-error');
+      if (err) { err.textContent = ''; err.hidden = true; }
+      const qtyInput = rowEl.querySelector('[data-field="qty"]');
+      if (qtyInput) {
+        qtyInput.focus({ preventScroll: false });
+        try { qtyInput.select(); } catch (_) { /* ignore */ }
+      }
+    }
+    updateRowSubtotal(row);
+    setActiveRow(row.uid);
+  }
+
+  function copyIntoRow(row, source) {
+    if (!row || !source) return;
+    row.name = source.name || '';
+    if (source.unit !== undefined && source.unit !== null) {
+      row.unit = String(source.unit);
+    } else {
+      const unitCents = Number(source.unitCents);
+      row.unit = Number.isFinite(unitCents) ? priceInputValue(unitCents) : '';
+    }
+    row.qty = '';
+    row.note = '';
+    row.error = null;
+    const rowEl = el.entryRows.querySelector(`[data-row-uid="${cssEscape(row.uid)}"]`);
+    if (rowEl) {
+      const nameInput = rowEl.querySelector('[data-field="name"]');
+      const unitInput = rowEl.querySelector('[data-field="unit"]');
+      const qtyInput = rowEl.querySelector('[data-field="qty"]');
+      const noteInput = rowEl.querySelector('[data-field="note"]');
+      if (nameInput) nameInput.value = row.name;
+      if (unitInput) unitInput.value = row.unit;
+      if (noteInput) noteInput.value = '';
+      if (qtyInput) {
+        qtyInput.value = '';
+        qtyInput.focus({ preventScroll: false });
+        try { qtyInput.select(); } catch (_) { /* ignore */ }
+      }
+      const err = rowEl.querySelector('.row-error');
+      if (err) { err.textContent = ''; err.hidden = true; }
+      rowEl.classList.remove('has-error');
+    }
+    updateRowSubtotal(row);
+    setActiveRow(row.uid);
+  }
+
+  /* ---------------- rendering: history ---------------- */
+  function renderHistory() {
+    $$('[data-history-mode]', el.historyTabs).forEach(btn => {
+      const active = btn.getAttribute('data-history-mode') === state.historyMode;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    el.historyCalendarPane.hidden = state.historyMode !== 'calendar';
+    el.historyNamePane.hidden = state.historyMode !== 'name';
+
+    if (state.historyMode === 'calendar') {
+      renderCalendar();
+      el.chartCard.hidden = false;
+    } else {
+      renderNameView();
+      el.chartCard.hidden = !!state.nameDetail;
+    }
+    renderChart();
+  }
+
+  function renderCalendar() {
+    const year = state.calYear;
+    const month = state.calMonth;
+    const monthKey = `${year}-${pad2(month + 1)}`;
+    const monthRecords = state.records.filter(r => monthKeyOf(r.date) === monthKey);
+    const monthTotal = sumRecords(monthRecords);
+    const days = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1, 12).getDay();
+    const today = todayStr();
+
+    const byDate = new Map();
+    for (const r of monthRecords) {
+      if (!byDate.has(r.date)) byDate.set(r.date, []);
+      byDate.get(r.date).push(r);
+    }
+
+    const cells = [];
+    for (let i = 0; i < firstDay; i++) cells.push('<span class="cal-blank" aria-hidden="true"></span>');
+    for (let day = 1; day <= days; day++) {
+      const dateStr = `${year}-${pad2(month + 1)}-${pad2(day)}`;
+      const dayRecords = byDate.get(dateStr) || [];
+      const total = sumRecords(dayRecords);
+      const selected = state.selectedDate === dateStr;
+      const classes = ['cal-day'];
+      if (dayRecords.length) classes.push('has-records');
+      if (dateStr === today) classes.push('today');
+      if (selected) classes.push('selected');
+      const aria = `${formatLongDate(dateStr)}${dateStr === today ? '，今天' : ''}，${dayRecords.length} 条记录，金额 ${formatMoney(total.amount)}，数量 ${formatQty(total.quantity)}`;
+      cells.push(`
+        <button class="${classes.join(' ')}" type="button" data-cal-date="${dateStr}" aria-label="${esc(aria)}">
+          <span class="day-num">${day}</span>
+          ${dayRecords.length ? `<span class="cal-amount" title="${formatMoney(total.amount)}">${formatMoneyCompact(total.amount)}</span>
+          <span class="cal-qty">×${formatQty(total.quantity)}</span>` : ''}
+        </button>`);
+    }
+    while (cells.length % 7 !== 0) cells.push('<span class="cal-blank" aria-hidden="true"></span>');
+
+    const selectedData = state.selectedDate && monthKeyOf(state.selectedDate) === monthKey
+      ? (byDate.get(state.selectedDate) || [])
+      : null;
+    const yearOptions = calendarYearOptions();
+    const monthOptions = Array.from({ length: 12 }, (_, index) => index + 1);
+
+    el.historyCalendarPane.innerHTML = `
+      <div class="history-layout">
+        <div class="calendar-column">
+          <section class="card calendar-card" aria-labelledby="calendarTitle">
+            <h2 class="sr-only" id="calendarTitle">日历查看</h2>
+            <div class="calendar-head">
+              <div class="calendar-title-wrap">
+                <select class="cal-select cal-select-year" id="calendarYear" aria-label="选择年份" title="选择年份">
+                  ${yearOptions.map(y => `<option value="${y}"${y === year ? ' selected' : ''}>${y}年</option>`).join('')}
+                </select>
+                <select class="cal-select cal-select-month" id="calendarMonth" aria-label="选择月份" title="选择月份">
+                  ${monthOptions.map(m => `<option value="${m}"${m === month + 1 ? ' selected' : ''}>${m}月</option>`).join('')}
+                </select>
+              </div>
+              <div class="cal-nav">
+                <button class="cal-icon-btn" type="button" data-cal="prev" aria-label="上一个月">
+                  ${icon('chevron-left')}
+                </button>
+                <button class="cal-icon-btn" type="button" data-cal="next" aria-label="下一个月">
+                  ${icon('chevron-right')}
+                </button>
+              </div>
+            </div>
+            <div class="month-summary">
+              <div><span>本月数量</span><strong>${formatQty(monthTotal.quantity)}</strong></div>
+              <div><span>本月金额</span><strong title="${formatMoney(monthTotal.amount)}">${formatMoney(monthTotal.amount)}</strong></div>
+              <div><span>记录天数</span><strong>${byDate.size} 天</strong></div>
+            </div>
+            <div class="calendar-weekdays" aria-hidden="true">
+              ${['日', '一', '二', '三', '四', '五', '六'].map(d => `<span class="weekday">${d}</span>`).join('')}
+            </div>
+            <div class="calendar-grid" role="group" aria-label="${year}年${month + 1}月日历">
+              ${cells.join('')}
+            </div>
+            <div class="calendar-legend">方格内：金额 / ×数量；点日期查看完整明细</div>
+          </section>
+
+          <section class="card report-card" id="reportCard" aria-labelledby="reportTitle">
+            <div class="card-head report-head">
+              <div>
+                <h2 id="reportTitle">汇总报表</h2>
+                <p class="card-sub" id="reportPeriod">—</p>
+              </div>
+              <div class="report-seg" role="group" aria-label="报表范围">
+                <button type="button" data-report-mode="month" class="${state.reportMode === 'month' ? 'active' : ''}" aria-pressed="${state.reportMode === 'month' ? 'true' : 'false'}">月度</button>
+                <button type="button" data-report-mode="year" class="${state.reportMode === 'year' ? 'active' : ''}" aria-pressed="${state.reportMode === 'year' ? 'true' : 'false'}">年度</button>
+              </div>
+            </div>
+            <div id="reportBody"></div>
+          </section>
+        </div>
+
+        <section class="card day-detail-card" id="dayDetailCard" aria-labelledby="dayDetailTitle">
+          ${dayDetailHTML(selectedData, state.selectedDate)}
+        </section>
+      </div>`;
+    renderSummaryReport();
+  }
+
+  function calendarYearOptions() {
+    const currentYear = new Date().getFullYear();
+    const years = new Set();
+    for (let y = currentYear - 10; y <= currentYear + 1; y++) years.add(y);
+    for (const record of state.records) {
+      const year = Number(String(record.date || '').slice(0, 4));
+      if (Number.isInteger(year) && year >= 1900 && year <= 9999) years.add(year);
+    }
+    years.add(state.calYear);
+    return Array.from(years).sort((a, b) => b - a);
+  }
+
+  const REPORT_COLORS = ['#2878E5', '#63A2F3', '#35B5A5', '#F0B45C', '#8A7CE0', '#E48A8A', '#58B9D9', '#A5B7CE', '#4D91D8', '#C7A6E8'];
+
+  function reportColor(index) {
+    if (index < REPORT_COLORS.length) return REPORT_COLORS[index];
+    return `hsl(${(210 + index * 47) % 360} 55% 58%)`;
+  }
+
+  function formatPercent(value) {
+    if (!Number.isFinite(value)) return '0%';
+    return value.toFixed(1).replace(/\.0$/, '') + '%';
+  }
+
+  function renderSummaryReport() {
+    const reportBody = document.getElementById('reportBody');
+    if (!reportBody) return;
+    const isYear = state.reportMode === 'year';
+    const year = state.calYear;
+    const month = state.calMonth;
+    const period = isYear ? `${year}年` : `${year}年${month + 1}月`;
+    const periodKey = `${year}-${pad2(month + 1)}`;
+    const records = state.records.filter(record => {
+      if (isYear) return String(record.date || '').slice(0, 4) === String(year);
+      return monthKeyOf(record.date) === periodKey;
+    });
+    const total = sumRecords(records);
+
+    const periodNode = document.getElementById('reportPeriod');
+    if (periodNode) periodNode.textContent = period;
+
+    const reportCard = document.getElementById('reportCard');
+    if (reportCard) {
+      $$('[data-report-mode]', reportCard).forEach(btn => {
+        const active = btn.getAttribute('data-report-mode') === state.reportMode;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    }
+
+    if (!records.length) {
+      reportBody.innerHTML = `
+        <div class="empty-state compact report-empty">
+          <div class="empty-icon">${icon(isYear ? 'calendar' : 'chart', 'icon-lg')}</div>
+          <h3>${isYear ? '这一年还没有记录' : '这个月还没有记录'}</h3>
+          <p>切换年份或月份，或者先去记一笔。</p>
+        </div>`;
+      return;
+    }
+
+    const groupMap = new Map();
+    for (const record of records) {
+      if (!groupMap.has(record.name)) {
+        groupMap.set(record.name, { name: record.name, amount: 0, count: 0 });
+      }
+      const group = groupMap.get(record.name);
+      group.amount += Number(record.amountCents) || 0;
+      group.count += 1;
+    }
+    const groups = Array.from(groupMap.values()).sort((a, b) =>
+      b.amount - a.amount || a.name.localeCompare(b.name, 'zh-CN')
+    );
+    const totalLabel = isYear ? '本年总金额' : '本月总金额';
+    const totalValue = formatMoney(total.amount);
+    const meta = `${total.count} 笔记录 · ${groups.length} 个工作名称`;
+
+    let contentHTML = '';
+    if (total.amount <= 0) {
+      contentHTML = `
+        <div class="empty-state compact report-empty">
+          <div class="empty-icon">${icon('chart', 'icon-lg')}</div>
+          <h3>金额合计为 ${formatMoney(total.amount)}</h3>
+          <p>记录金额为 0，暂时没有可计算的百分比。</p>
+        </div>`;
+    } else {
+      contentHTML = `
+        <div class="report-content">
+          <div class="report-pie">${buildPieChart(groups, total.amount)}</div>
+          <div class="report-legend">
+            ${groups.map((group, index) => {
+              const percent = total.amount ? (group.amount / total.amount) * 100 : 0;
+              return `
+                <div class="report-legend-row">
+                  <span class="report-dot" style="background:${reportColor(index)}" aria-hidden="true"></span>
+                  <span class="report-legend-name" title="${esc(group.name)}">${esc(group.name)}</span>
+                  <span class="report-legend-value">
+                    <strong>${formatPercent(percent)}</strong>
+                    <small>${formatMoney(group.amount)}</small>
+                  </span>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+    }
+
+    reportBody.innerHTML = `
+      <div class="report-total">
+        <span class="report-total-label">${totalLabel}</span>
+        <strong class="report-total-value tabular${totalValue.length > 11 ? ' is-long' : ''}" title="${totalValue}">${totalValue}</strong>
+        <div class="report-meta"><span>${meta}</span></div>
+      </div>
+      ${contentHTML}
+      <div class="report-foot">占比按记录金额计算</div>`;
+  }
+
+  function buildPieChart(groups, total) {
+    const positive = groups.filter(group => group.amount > 0);
+    if (!positive.length) return '';
+    const cx = 80;
+    const cy = 80;
+    const radius = 68;
+    const startAngle = -Math.PI / 2;
+    if (positive.length === 1) {
+      return `<svg viewBox="0 0 160 160" role="img" aria-label="${esc(positive[0].name)} 占 100%">
+        <circle cx="${cx}" cy="${cy}" r="${radius}" fill="${reportColor(groups.indexOf(positive[0]))}"/>
+      </svg>`;
+    }
+    let cursor = startAngle;
+    const segments = positive.map((group, index) => {
+      const fraction = group.amount / total;
+      const end = index === positive.length - 1 ? startAngle + Math.PI * 2 : cursor + fraction * Math.PI * 2;
+      const x1 = cx + radius * Math.cos(cursor);
+      const y1 = cy + radius * Math.sin(cursor);
+      const x2 = cx + radius * Math.cos(end);
+      const y2 = cy + radius * Math.sin(end);
+      const largeArc = (end - cursor) > Math.PI ? 1 : 0;
+      const percent = fraction * 100;
+      const path = `<path d="M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${radius} ${radius} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z" fill="${reportColor(groups.indexOf(group))}" stroke="#fff" stroke-width="1.5"><title>${esc(group.name)}：${formatMoney(group.amount)}（${formatPercent(percent)}）</title></path>`;
+      cursor = end;
+      return path;
+    }).join('');
+    const aria = `扇形图：${positive.map(group => `${group.name} ${formatPercent(group.amount / total * 100)}`).join('，')}`;
+    return `<svg viewBox="0 0 160 160" role="img" aria-label="${esc(aria)}">${segments}</svg>`;
+  }
+
+
+  function dayDetailHTML(records, dateStr) {
+    if (!records || !dateStr) {
+      return `
+        <div class="empty-state compact">
+          <div class="empty-icon">${icon('calendar', 'icon-lg')}</div>
+          <h3>点击日期查看明细</h3>
+          <p>选择日历中的任意一天，这里会显示当天全部记录和精确金额。</p>
+        </div>`;
+    }
+    const total = sumRecords(records);
+    const sorted = [...records].sort(sortByCreatedAsc);
+    return `
+      <div class="detail-head">
+        <div>
+          <h2 id="dayDetailTitle">${formatShortDate(dateStr)}</h2>
+          <p class="card-sub">${weekdayOf(dateStr, true)} · ${records.length} 条记录${dateStr === todayStr() ? ' · 今天' : ''}</p>
+        </div>
+      </div>
+      <div class="day-total-strip">
+        <div class="day-total-item"><span>当天总数量</span><strong>${formatQty(total.quantity)}</strong></div>
+        <div class="day-total-item"><span>当天总金额</span><strong>${formatMoney(total.amount)}</strong></div>
+      </div>
+      ${sorted.length ? sorted.map(r => `
+        <div class="detail-record">
+          <div class="detail-record-top">
+            <div class="detail-record-main">
+              <div class="detail-record-name">${esc(r.name)}</div>
+              <div class="detail-record-meta">数量 ${formatQty(r.quantity)} × 单价 ${formatMoney(r.unitCents)}</div>
+              ${r.note && String(r.note).trim() ? `<div class="detail-record-note">备注：${esc(r.note)}</div>` : ''}
+            </div>
+            <div class="detail-record-amount">${formatMoney(r.amountCents)}</div>
+          </div>
+          <div class="record-actions">
+            <button class="action-btn" type="button" data-edit-record="${esc(r.id)}">${icon('edit')}编辑</button>
+            <button class="action-btn danger" type="button" data-delete-record="${esc(r.id)}">${icon('trash')}删除</button>
+          </div>
+        </div>`).join('') : `
+        <div class="empty-state compact">
+          <p>当天没有记录。</p>
+        </div>`}
+      <div class="detail-footer-note">当天所有原始记录均已列出，同一名称多条也不会合并。</div>`;
+  }
+
+  function changeCalendarMonth(delta) {
+    const base = new Date(state.calYear, state.calMonth + delta, 1, 12);
+    state.calYear = base.getFullYear();
+    state.calMonth = base.getMonth();
+    state.selectedDate = null;
+    renderCalendar();
+  }
+
+  function goToCurrentMonth() {
+    const now = new Date();
+    state.calYear = now.getFullYear();
+    state.calMonth = now.getMonth();
+    state.selectedDate = todayStr();
+    renderCalendar();
+  }
+
+  function scrollToDayDetail() {
+    if (window.matchMedia('(min-width: 1024px)').matches) return;
+    setTimeout(() => {
+      const node = document.getElementById('dayDetailCard');
+      if (node) node.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    }, 40);
+  }
+
+  function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function buildNameGroups() {
+    const map = new Map();
+    for (const record of state.records) {
+      if (!map.has(record.name)) {
+        map.set(record.name, { name: record.name, records: [], quantity: 0, amount: 0, lastDate: record.date, lastActivity: record.updatedAt || record.createdAt || '' });
+      }
+      const group = map.get(record.name);
+      group.records.push(record);
+      group.quantity += Number(record.quantity) || 0;
+      group.amount += Number(record.amountCents) || 0;
+      if (record.date > group.lastDate) group.lastDate = record.date;
+      const activity = record.updatedAt || record.createdAt || '';
+      if (activity > group.lastActivity) group.lastActivity = activity;
+    }
+    const groups = Array.from(map.values());
+    for (const group of groups) {
+      group.records.sort(sortByDateDesc);
+      group.searchKey = normalizeSearch(group.name);
+    }
+    groups.sort((a, b) => {
+      return String(b.lastDate).localeCompare(String(a.lastDate)) ||
+        String(b.lastActivity).localeCompare(String(a.lastActivity)) ||
+        a.name.localeCompare(b.name, 'zh-CN');
+    });
+    return groups;
+  }
+
+  function renderNameView() {
+    if (state.nameDetail) {
+      renderNameDetail();
+      return;
+    }
+    renderNameList();
+  }
+
+  function renderNameList() {
+    const groups = buildNameGroups();
+    state.nameGroups = groups;
+    state.visibleGroups = groups;
+    const hasRecords = state.records.length > 0;
+    el.historyNamePane.innerHTML = `
+      <section class="card name-list-card" aria-labelledby="nameListTitle">
+        <div class="card-head">
+          <div>
+            <h2 id="nameListTitle">按名称查看</h2>
+            <p class="card-sub">搜索全部历史记录，按最近时间排序</p>
+          </div>
+          <span class="settings-badge">${groups.length} 个名称</span>
+        </div>
+        <label class="search-box" for="nameSearch">
+          <span class="sr-only">搜索名称</span>
+          ${icon('search')}
+          <input class="input" id="nameSearch" type="search" autocomplete="off" placeholder="搜索名称…" value="${esc(state.nameQuery)}">
+        </label>
+        <div class="name-list" id="nameListBody"></div>
+      </section>`;
+    renderNameListItems();
+    if (!hasRecords) {
+      const listBody = document.getElementById('nameListBody');
+      if (listBody) {
+        listBody.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">${icon('file', 'icon-lg')}</div>
+            <h3>还没有历史记录</h3>
+            <p>保存第一条记录后，就可以在这里按名称查询。</p>
+            <button class="btn btn-soft" type="button" data-nav="entry">${icon('plus', 'icon-sm')}去记一笔</button>
+          </div>`;
+      }
+    }
+  }
+
+  function renderNameListItems() {
+    const listBody = document.getElementById('nameListBody');
+    if (!listBody) return;
+    const query = normalizeSearch(state.nameQuery);
+    const filtered = state.nameGroups.filter(group => !query || group.searchKey.includes(query));
+    if (!state.records.length) return;
+    if (!filtered.length) {
+      listBody.innerHTML = `
+        <div class="empty-state compact">
+          <div class="empty-icon">${icon('search', 'icon-lg')}</div>
+          <h3>没有找到匹配名称</h3>
+          <p>试试更短的关键词，或检查名称是否已保存。</p>
+        </div>`;
+      state.visibleGroups = filtered;
+      return;
+    }
+    listBody.innerHTML = filtered.map((group, index) => {
+      const initial = Array.from(group.name)[0] || '记';
+      return `
+        <button class="name-item" type="button" data-group-index="${index}" aria-label="查看 ${esc(group.name)} 的历史记录">
+          <span class="name-avatar" aria-hidden="true">${esc(initial)}</span>
+          <span class="name-content">
+            <span class="name-title">${esc(group.name)}</span>
+            <span class="name-sub">最近 ${formatShortDate(group.lastDate).replace('月', '/').replace('日', '')} · ${group.records.length} 次</span>
+          </span>
+          <span class="name-summary">
+            <strong>${formatMoney(group.amount)}</strong>
+            <span>累计数量 ${formatQty(group.quantity)}</span>
+          </span>
+          ${icon('chevron-right')}
+        </button>`;
+    }).join('');
+    state.visibleGroups = filtered;
+  }
+
+  function getMonthOptions(records) {
+    const keys = Array.from(new Set(records.map(r => monthKeyOf(r.date)))).filter(Boolean);
+    keys.sort((a, b) => b.localeCompare(a));
+    return keys;
+  }
+
+  function renderNameDetail() {
+    const detail = state.nameDetail;
+    if (!detail) {
+      renderNameList();
+      return;
+    }
+    const allRecords = state.records.filter(r => r.name === detail.name).sort(sortByDateDesc);
+    if (!allRecords.length) {
+      state.nameDetail = null;
+      renderNameList();
+      return;
+    }
+    const months = getMonthOptions(allRecords);
+    if (detail.month !== 'all' && !months.includes(detail.month)) detail.month = 'all';
+    const filtered = detail.month === 'all'
+      ? allRecords
+      : allRecords.filter(r => monthKeyOf(r.date) === detail.month);
+    const total = sumRecords(allRecords);
+    const initial = Array.from(detail.name)[0] || '记';
+    el.historyNamePane.innerHTML = `
+      <div class="name-detail-wrap">
+        <button class="back-btn" type="button" id="nameBackBtn">
+          ${icon('arrow-left')}返回名称列表
+        </button>
+        <section class="card name-detail-card" aria-labelledby="nameDetailTitle">
+          <div class="name-detail-title">
+            <span class="name-avatar" aria-hidden="true">${esc(initial)}</span>
+            <div style="min-width:0">
+              <h2 id="nameDetailTitle">${esc(detail.name)}</h2>
+              <p class="card-sub">累计统计包含该名称的全部历史记录</p>
+            </div>
+          </div>
+          <div class="detail-stats">
+            <div class="detail-stat"><span>累计数量</span><strong>${formatQty(total.quantity)}</strong></div>
+            <div class="detail-stat"><span>累计金额</span><strong title="${formatMoney(total.amount)}">${formatMoney(total.amount)}</strong></div>
+            <div class="detail-stat"><span>记录次数</span><strong>${total.count} 次</strong></div>
+          </div>
+          <div class="filter-row">
+            <label class="field" for="nameMonthFilter">
+              <span>按月份筛选明细</span>
+              <select class="input" id="nameMonthFilter">
+                <option value="all"${detail.month === 'all' ? ' selected' : ''}>全部月份</option>
+                ${months.map(key => `<option value="${key}"${detail.month === key ? ' selected' : ''}>${monthKeyLabel(key)}</option>`).join('')}
+              </select>
+            </label>
+          </div>
+          <p class="note-line">累计数量、累计金额和记录次数始终统计全部历史；月份筛选只影响下方明细。</p>
+        </section>
+        <section class="card name-detail-card" aria-labelledby="nameRecordsTitle">
+          <div class="card-head">
+            <div>
+              <h3 id="nameRecordsTitle">记录明细</h3>
+              <p class="card-sub">${detail.month === 'all' ? `全部 ${filtered.length} 条` : `${monthKeyLabel(detail.month)} · ${filtered.length} 条`}，按日期从新到旧</p>
+            </div>
+          </div>
+          ${filtered.length ? filtered.map(r => `
+            <div class="detail-record">
+              <div class="name-record-date">${formatLongDate(r.date)} · ${weekdayOf(r.date)}</div>
+              <div class="detail-record-top">
+                <div class="detail-record-main">
+                  <div class="detail-record-meta">数量 ${formatQty(r.quantity)} × 当时单价 ${formatMoney(r.unitCents)}</div>
+                  ${r.note && String(r.note).trim() ? `<div class="detail-record-note">备注：${esc(r.note)}</div>` : ''}
+                </div>
+                <div class="detail-record-amount">${formatMoney(r.amountCents)}</div>
+              </div>
+              <div class="record-actions">
+                <button class="action-btn" type="button" data-edit-record="${esc(r.id)}">${icon('edit')}编辑</button>
+                <button class="action-btn danger" type="button" data-delete-record="${esc(r.id)}">${icon('trash')}删除</button>
+              </div>
+            </div>`).join('') : `
+            <div class="empty-state compact">
+              <p>这个月份没有记录。</p>
+            </div>`}
+          <div class="detail-footer-note">同一名称在同一天的多条记录会分别保留并显示。</div>
+        </section>
+      </div>`;
+  }
+
+  function renderChart() {
+    const months = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1, 12);
+      months.push({ year: d.getFullYear(), month: d.getMonth(), key: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}` });
+    }
+    const totals = new Map(months.map(m => [m.key, 0]));
+    for (const record of state.records) {
+      const key = monthKeyOf(record.date);
+      if (totals.has(key)) totals.set(key, totals.get(key) + record.amountCents);
+    }
+    const values = months.map(m => totals.get(m.key) || 0);
+    const max = Math.max(...values, 0);
+    el.chartRange.textContent = `${months[0].year}年${months[0].month + 1}月 – ${months[5].year !== months[0].year ? months[5].year + '年' : ''}${months[5].month + 1}月`;
+    const aria = `近 6 个月金额：${months.map((m, i) => `${m.month + 1}月 ${formatMoney(values[i])}`).join('；')}`;
+    el.chartBars.setAttribute('aria-label', aria);
+    el.chartBars.innerHTML = months.map((m, index) => {
+      const value = values[index];
+      const height = max > 0 ? Math.max(value > 0 ? 5 : 0, Math.round(value / max * 100)) : 0;
+      return `
+        <div class="chart-col" title="${m.year}年${m.month + 1}月：${formatMoney(value)}">
+          <span class="chart-value">${formatMoneyCompact(value)}</span>
+          <div class="chart-track">
+            <div class="chart-bar${value === 0 ? ' is-zero' : ''}" style="height:${height}%"></div>
+          </div>
+          <span class="chart-label">${m.month + 1}月</span>
+        </div>`;
+    }).join('');
+  }
+
+  /* ---------------- dates for entry / calendar event helpers ---------------- */
+  function recordById(id) {
+    return state.records.find(r => r.id === id) || null;
+  }
+
+  function tagById(id) {
+    return state.tags.find(t => t.id === id) || null;
+  }
+
+  /* ---------------- settings UI ---------------- */
+  function renderSettings() {
+    el.settingsTotalCount.textContent = `${state.records.length} 条记录 · ${state.tags.length} 个标签`;
+    if (!el.exportMonth.value) {
+      const now = new Date();
+      el.exportMonth.value = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+    }
+    $$('[data-export-scope]', el.exportScope).forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-export-scope') === state.exportScope);
+    });
+    el.exportMonthWrap.hidden = state.exportScope !== 'month';
+
+    const tags = [...state.tags].sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+    if (!tags.length) {
+      el.settingsTagList.innerHTML = `
+        <div class="chip-empty" style="margin-top:10px">${icon('tag', 'icon-sm')}<span>还没有快捷标签，点「新增」创建</span></div>`;
+    } else {
+      el.settingsTagList.innerHTML = `
+        <div class="tag-manage-list">
+          ${tags.map(tag => `
+            <div class="setting-tag-row">
+              <span class="setting-tag-icon">${icon('tag')}</span>
+              <span class="setting-tag-main">
+                <strong>${esc(tag.name)}</strong>
+                <span>${tag.defaultUnitCents == null ? '未设默认单价' : `默认单价 ${formatMoney(tag.defaultUnitCents)}`}</span>
+              </span>
+              <span class="tag-row-actions">
+                <button type="button" data-edit-tag="${esc(tag.id)}">编辑</button>
+                <button type="button" class="danger" data-delete-tag="${esc(tag.id)}">删除</button>
+              </span>
+            </div>`).join('')}
+        </div>`;
+    }
+    renderImportPreview();
+  }
+
+  function openSettings(scrollTags = false) {
+    state.settingsOpen = true;
+    renderSettings();
+    openOverlay(el.settingsModal);
+    el.settingsBody.scrollTop = 0;
+    if (scrollTags) {
+      setTimeout(() => {
+        const section = el.settingsTagsSection;
+        if (section) section.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+        const add = el.settingsAddTag;
+        if (add) add.focus({ preventScroll: true });
+      }, 220);
+    }
+  }
+
+  function showImportError(message) {
+    el.importError.textContent = message;
+    el.importError.hidden = !message;
+  }
+
+  function renderImportPreview() {
+    const pending = state.pendingImport;
+    if (!pending) {
+      el.importPreview.hidden = true;
+      el.importPreview.innerHTML = '';
+      return;
+    }
+    const existingRecordIds = new Set(state.records.map(r => r.id));
+    const existingTagIds = new Set(state.tags.map(t => t.id));
+    const newRecordCount = pending.records.filter(r => !existingRecordIds.has(r.id)).length;
+    const newTagCount = pending.tags.filter(t => !existingTagIds.has(t.id)).length;
+    el.importPreview.hidden = false;
+    el.importPreview.innerHTML = `
+      <div class="import-box">
+        <div class="import-box-head">
+          <strong>备份预览</strong>
+          <span>${esc(pending.fileName)}</span>
+        </div>
+        <div class="import-meta">
+          <div><span>备份时间</span><strong title="${esc(pending.backupTimeDisplay)}">${esc(pending.backupTimeDisplay)}</strong></div>
+          <div><span>记录数</span><strong>${pending.records.length} 条</strong></div>
+          <div><span>标签数</span><strong>${pending.tags.length} 个</strong></div>
+        </div>
+        <p class="import-warning">合并导入会按唯一 ID 去重：约新增 ${newRecordCount} 条记录、${newTagCount} 个标签。覆盖恢复会用备份完全替换当前数据。</p>
+        <div class="import-actions">
+          <button class="btn btn-soft" type="button" data-import-mode="merge">合并导入</button>
+          <button class="btn btn-outline-danger" type="button" data-import-mode="overwrite">覆盖恢复</button>
+        </div>
+        <p class="import-hint">恢复前请确认已备份当前数据。覆盖恢复不可撤销。</p>
+      </div>`;
+  }
+
+  function setImportBusy(busy) {
+    importBusy = busy;
+    $$('[data-import-mode]', el.importPreview).forEach(btn => { btn.disabled = busy; });
+  }
+
+  /* ---------------- edit record ---------------- */
+  function openEditRecord(id) {
+    const record = recordById(id);
+    if (!record) {
+      showToast('这条记录已不存在，请刷新后重试。', { type: 'error' });
+      return;
+    }
+    currentEditId = id;
+    el.editDate.value = record.date;
+    el.editName.value = record.name;
+    el.editQty.value = String(record.quantity);
+    el.editPrice.value = priceInputValue(record.unitCents);
+    el.editNote.value = record.note || '';
+    el.editError.hidden = true;
+    $$('.input', el.editForm).forEach(input => input.classList.remove('invalid'));
+    updateEditAmount();
+    openOverlay(el.editModal);
+  }
+
+  function updateEditAmount() {
+    const calc = lineCalculation(el.editQty.value, el.editPrice.value);
+    el.editAmount.textContent = calc.ok ? formatMoney(calc.amount) : '—';
+  }
+
+  function validateEditForm() {
+    const date = el.editDate.value;
+    const name = el.editName.value.trim();
+    const qty = parsePositiveInt(el.editQty.value);
+    const price = parseUnitPrice(el.editPrice.value);
+    $$('.input', el.editForm).forEach(input => input.classList.remove('invalid'));
+    let error = '';
+    let focus = null;
+    if (!isValidDateString(date)) {
+      error = '请选择有效的记录日期。';
+      el.editDate.classList.add('invalid');
+      focus = el.editDate;
+    } else if (!name) {
+      error = '名称不能为空。';
+      el.editName.classList.add('invalid');
+      focus = el.editName;
+    } else if (!qty.ok) {
+      error = qty.error + '。';
+      el.editQty.classList.add('invalid');
+      focus = el.editQty;
+    } else if (!price.ok) {
+      error = price.error + '。';
+      el.editPrice.classList.add('invalid');
+      focus = el.editPrice;
+    } else {
+      const amount = qty.value * price.value;
+      if (!Number.isSafeInteger(amount)) {
+        error = '金额超出可计算范围。';
+        focus = el.editQty;
+      }
+    }
+    if (error) {
+      el.editError.textContent = error;
+      el.editError.hidden = false;
+      if (focus) focus.focus();
+      return null;
+    }
+    return { date, name, qty: qty.value, unitCents: price.value, note: el.editNote.value.trim().slice(0, 300) };
+  }
+
+  /* ---------------- tag editor ---------------- */
+  function openTagEditor(tagId = null) {
+    editingTagId = tagId;
+    const tag = tagId ? tagById(tagId) : null;
+    if (tagId && !tag) {
+      showToast('这个标签已不存在。', { type: 'error' });
+      return;
+    }
+    el.tagModalTitle.textContent = tag ? '编辑标签' : '新增标签';
+    el.tagName.value = tag ? tag.name : '';
+    el.tagPrice.value = tag && tag.defaultUnitCents != null ? priceInputValue(tag.defaultUnitCents) : '';
+    el.tagFormError.hidden = true;
+    el.tagName.classList.remove('invalid');
+    el.tagPrice.classList.remove('invalid');
+    openOverlay(el.tagModal);
+    setTimeout(() => el.tagName.focus({ preventScroll: true }), 50);
+  }
+
+  /* ---------------- action: save entry ---------------- */
+  async function saveEntry(event) {
+    if (event) event.preventDefault();
+    if (entrySaving) return;
+
+    clearEntryErrors();
+    const date = el.entryDate.value;
+    if (!isValidDateString(date)) {
+      el.entryDate.classList.add('invalid');
+      el.dateError.textContent = '请选择有效的记录日期。';
+      el.dateError.hidden = false;
+      el.entryDate.focus();
+      showToast('请选择有效的记录日期。', { type: 'error' });
+      return;
+    }
+
+    const drafts = [];
+    const errors = [];
+    entry.rows.forEach((row, index) => {
+      const name = row.name.trim();
+      const qtyRaw = String(row.qty).trim();
+      const unitRaw = String(row.unit).trim();
+      const note = String(row.note || '').trim().slice(0, 300);
+      if (!name && !qtyRaw && !unitRaw && !note) {
+        row.error = { field: 'name', message: '这一行还是空的，请填写或删除该行。' };
+        errors.push({ row, field: 'name', message: row.error.message });
+        return;
+      }
+      if (!name) {
+        row.error = { field: 'name', message: '请填写名称。' };
+        errors.push({ row, field: 'name', message: row.error.message });
+        return;
+      }
+      const qty = parsePositiveInt(qtyRaw);
+      if (!qty.ok) {
+        row.error = { field: 'qty', message: qty.error + '。' };
+        errors.push({ row, field: 'qty', message: row.error.message });
+        return;
+      }
+      const unit = parseUnitPrice(unitRaw);
+      if (!unit.ok) {
+        row.error = { field: 'unit', message: unit.error + '。' };
+        errors.push({ row, field: 'unit', message: row.error.message });
+        return;
+      }
+      const amount = qty.value * unit.value;
+      if (!Number.isSafeInteger(amount)) {
+        row.error = { field: 'qty', message: '金额超出可计算范围。' };
+        errors.push({ row, field: 'qty', message: row.error.message });
+        return;
+      }
+      drafts.push({ row, index, name, quantity: qty.value, unitCents: unit.value, amountCents: amount, note });
+    });
+
+    if (errors.length) {
+      for (const item of errors) setRowError(item.row, item.field, item.message);
+      const first = errors[0];
+      focusRowField(first.row.uid, first.field);
+      showToast(`有 ${errors.length} 处需要检查，请按提示补全。`, { type: 'error', duration: 4500 });
+      return;
+    }
+
+    if (!drafts.length) {
+      showToast('请至少填写一条记录。', { type: 'error' });
+      return;
+    }
+
+    entrySaving = true;
+    const saveLabel = el.saveEntryLabel.textContent;
+    el.saveEntryBtn.disabled = true;
+    el.saveEntryLabel.textContent = '正在保存…';
+    const baseTime = Date.now();
+    const batchId = uid('batch');
+    const records = drafts.map((draft, index) => {
+      const recordTime = new Date(baseTime + index).toISOString();
+      return {
+        id: uid('rec'),
+        date,
+        name: draft.name,
+        quantity: draft.quantity,
+        unitCents: draft.unitCents,
+        amountCents: draft.amountCents,
+        note: draft.note,
+        createdAt: recordTime,
+        updatedAt: recordTime,
+        batchId
+      };
+    });
+    const total = sumRecords(records);
+
+    try {
+      await addRecordsToDb(records);
+      state.records.push(...records);
+      const keepDate = date;
+      entry.rows = [makeEmptyRow()];
+      entry.activeUid = entry.rows[0].uid;
+      el.entryDate.value = keepDate;
+      renderEntryRows();
+      renderAll();
+      showToast(`已保存 ${records.length} 条记录，合计 ${formatMoney(total.amount)}。`, { type: 'success', duration: 4200 });
+    } catch (err) {
+      console.error(err);
+      showToast(`保存失败：${errorMessage(err)}`, { type: 'error', duration: 5200 });
+    } finally {
+      entrySaving = false;
+      el.saveEntryBtn.disabled = false;
+      el.saveEntryLabel.textContent = saveLabel;
+    }
+  }
+
+  /* ---------------- action: edit / delete ---------------- */
+  async function saveEdit(event) {
+    if (event) event.preventDefault();
+    if (editSaving) return;
+    const record = recordById(currentEditId);
+    if (!record) {
+      el.editError.textContent = '这条记录已不存在。';
+      el.editError.hidden = false;
+      return;
+    }
+    const valid = validateEditForm();
+    if (!valid) return;
+    const updated = {
+      ...record,
+      date: valid.date,
+      name: valid.name,
+      quantity: valid.qty,
+      unitCents: valid.unitCents,
+      amountCents: valid.qty * valid.unitCents,
+      note: valid.note,
+      updatedAt: nowIso()
+    };
+    editSaving = true;
+    el.editSaveBtn.disabled = true;
+    const label = el.editSaveBtn.textContent;
+    el.editSaveBtn.textContent = '保存中…';
+    try {
+      await putRecordToDb(updated);
+      const idx = state.records.findIndex(r => r.id === updated.id);
+      if (idx >= 0) state.records[idx] = updated;
+      closeOverlay(el.editModal);
+      renderAll();
+      showToast('修改已保存，相关统计已同步更新。', { type: 'success' });
+    } catch (err) {
+      console.error(err);
+      el.editError.textContent = `保存失败：${errorMessage(err)}`;
+      el.editError.hidden = false;
+      showToast('修改没有保存，请重试。', { type: 'error' });
+    } finally {
+      editSaving = false;
+      el.editSaveBtn.disabled = false;
+      el.editSaveBtn.textContent = label;
+    }
+  }
+
+  async function requestDeleteRecord(record, closeModal = null) {
+    if (!record) return;
+    const ok = await confirmDialog({
+      title: '删除这条记录？',
+      message: `将删除「${record.name}」这条记录（${formatLongDate(record.date)}，${formatMoney(record.amountCents)}）。删除后可在约 5 秒内撤销。`,
+      confirmText: '删除',
+      cancelText: '取消',
+      danger: true
+    });
+    if (!ok) return;
+    try {
+      await deleteRecordFromDb(record.id);
+      state.records = state.records.filter(r => r.id !== record.id);
+      if (closeModal) closeOverlay(closeModal);
+      renderAll();
+      showDeleteToast(record);
+    } catch (err) {
+      console.error(err);
+      showToast(`删除失败：${errorMessage(err)}`, { type: 'error', duration: 5200 });
+    }
+  }
+
+  function showDeleteToast(record) {
+    showToast(`已删除「${truncateText(record.name)}」`, {
+      type: 'success',
+      duration: 5200,
+      action: {
+        label: '撤销',
+        onClick: () => undoDeleteRecord(record)
+      }
+    });
+  }
+
+  async function undoDeleteRecord(record) {
+    try {
+      await addRecordToDb(record);
+      state.records.push(record);
+      renderAll();
+      showToast('已撤销删除。', { type: 'success' });
+    } catch (err) {
+      console.error(err);
+      showToast(`撤销失败：${errorMessage(err)}`, { type: 'error', duration: 5200 });
+    }
+  }
+
+  /* ---------------- action: tags ---------------- */
+  async function saveTag(event) {
+    if (event) event.preventDefault();
+    if (tagSaving) return;
+    const name = el.tagName.value.trim();
+    const priceRaw = el.tagPrice.value.trim();
+    el.tagName.classList.remove('invalid');
+    el.tagPrice.classList.remove('invalid');
+    el.tagFormError.hidden = true;
+
+    if (!name) {
+      el.tagName.classList.add('invalid');
+      el.tagFormError.textContent = '标签名称不能为空。';
+      el.tagFormError.hidden = false;
+      el.tagName.focus();
+      return;
+    }
+    const duplicate = state.tags.find(tag =>
+      tag.id !== editingTagId && tag.name.trim().toLocaleLowerCase('zh-CN') === name.toLocaleLowerCase('zh-CN')
+    );
+    if (duplicate) {
+      el.tagName.classList.add('invalid');
+      el.tagFormError.textContent = '已有同名快捷标签，请换一个名称。';
+      el.tagFormError.hidden = false;
+      el.tagName.focus();
+      return;
+    }
+    let defaultUnitCents = null;
+    if (priceRaw) {
+      const parsed = parseUnitPrice(priceRaw);
+      if (!parsed.ok) {
+        el.tagPrice.classList.add('invalid');
+        el.tagFormError.textContent = parsed.error + '。';
+        el.tagFormError.hidden = false;
+        el.tagPrice.focus();
+        return;
+      }
+      defaultUnitCents = parsed.value;
+    }
+
+    tagSaving = true;
+    el.tagSaveBtn.disabled = true;
+    const label = el.tagSaveBtn.textContent;
+    el.tagSaveBtn.textContent = '保存中…';
+    const now = nowIso();
+    try {
+      if (editingTagId) {
+        const existing = tagById(editingTagId);
+        if (!existing) throw new Error('标签已不存在。');
+        const updated = { ...existing, name, defaultUnitCents, updatedAt: now };
+        await putTagToDb(updated);
+        const idx = state.tags.findIndex(t => t.id === editingTagId);
+        if (idx >= 0) state.tags[idx] = updated;
+        showToast('标签已更新。', { type: 'success' });
+      } else {
+        const tag = {
+          id: uid('tag'),
+          name,
+          defaultUnitCents,
+          createdAt: now,
+          updatedAt: now
+        };
+        await addTagToDb(tag);
+        state.tags.push(tag);
+        showToast('标签已创建。', { type: 'success' });
+      }
+      closeOverlay(el.tagModal);
+      renderAll();
+    } catch (err) {
+      console.error(err);
+      el.tagFormError.textContent = `保存失败：${errorMessage(err)}`;
+      el.tagFormError.hidden = false;
+      showToast('标签保存失败，请重试。', { type: 'error' });
+    } finally {
+      tagSaving = false;
+      el.tagSaveBtn.disabled = false;
+      el.tagSaveBtn.textContent = label;
+    }
+  }
+
+  async function requestDeleteTag(tag) {
+    if (!tag) return;
+    const ok = await confirmDialog({
+      title: '删除快捷标签？',
+      message: `将删除快捷标签「${tag.name}」。这只删除快捷入口，不会删除任何历史记录。`,
+      confirmText: '删除标签',
+      cancelText: '取消',
+      danger: true
+    });
+    if (!ok) return;
+    try {
+      await deleteTagFromDb(tag.id);
+      state.tags = state.tags.filter(t => t.id !== tag.id);
+      renderAll();
+      showToast('快捷标签已删除，历史记录不受影响。', { type: 'success' });
+    } catch (err) {
+      console.error(err);
+      showToast(`删除标签失败：${errorMessage(err)}`, { type: 'error' });
+    }
+  }
+
+  /* ---------------- export ---------------- */
+  function getExportRecords() {
+    if (state.exportScope === 'month') {
+      const month = el.exportMonth.value;
+      if (!/^\d{4}-\d{2}$/.test(month)) throw new Error('请选择有效的导出月份。');
+      const records = state.records.filter(r => monthKeyOf(r.date) === month);
+      return { records: records.sort((a, b) => a.date.localeCompare(b.date) || sortByCreatedAsc(a, b)), suffix: month };
+    }
+    return {
+      records: [...state.records].sort((a, b) => a.date.localeCompare(b.date) || sortByCreatedAsc(a, b)),
+      suffix: '全部'
+    };
+  }
+
+  function exportFileName(extension, suffix) {
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}-${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}`;
+    return `工作记录_${suffix}_${stamp}.${extension}`;
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  }
+
+  async function exportXlsx() {
+    let selection;
+    try {
+      selection = getExportRecords();
+    } catch (err) {
+      showToast(err.message, { type: 'error' });
+      return;
+    }
+    if (!selection.records.length) {
+      showToast('所选范围内没有记录可导出。', { type: 'info' });
+      return;
+    }
+    const btn = el.exportXlsx;
+    btn.disabled = true;
+    try {
+      await new Promise(resolve => setTimeout(resolve, 20));
+      const blob = buildXlsxBlob(selection.records);
+      downloadBlob(blob, exportFileName('xlsx', selection.suffix));
+      showToast(`已导出 ${selection.records.length} 条记录为 Excel。`, { type: 'success' });
+    } catch (err) {
+      console.error(err);
+      showToast(`Excel 导出失败：${errorMessage(err)}`, { type: 'error' });
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function exportCsv() {
+    let selection;
+    try {
+      selection = getExportRecords();
+    } catch (err) {
+      showToast(err.message, { type: 'error' });
+      return;
+    }
+    if (!selection.records.length) {
+      showToast('所选范围内没有记录可导出。', { type: 'info' });
+      return;
+    }
+    try {
+      const csv = buildCsv(selection.records);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      downloadBlob(blob, exportFileName('csv', selection.suffix));
+      showToast(`已导出 ${selection.records.length} 条记录为 CSV。`, { type: 'success' });
+    } catch (err) {
+      console.error(err);
+      showToast(`CSV 导出失败：${errorMessage(err)}`, { type: 'error' });
+    }
+  }
+
+  function buildCsv(records) {
+    const rows = [['日期', '名称', '数量', '单价（元）', '金额（元）', '备注']];
+    for (const r of records) {
+      rows.push([
+        r.date,
+        r.name,
+        String(r.quantity),
+        (r.unitCents / 100).toFixed(2),
+        (r.amountCents / 100).toFixed(2),
+        r.note || ''
+      ]);
+    }
+    const content = rows.map(row => row.map(csvCell).join(',')).join('\r\n');
+    return '\uFEFF' + content + '\r\n';
+  }
+
+  function csvCell(value) {
+    const text = String(value == null ? '' : value);
+    const safe = /^[=+\-@]/.test(text) ? "'" + text : text;
+    return `"${safe.replace(/"/g, '""')}"`;
+  }
+
+  /* ---------------- XLSX writer (real OOXML, no external library) ---------------- */
+  function buildXlsxBlob(records) {
+    const headers = ['日期', '名称', '数量', '单价（元）', '金额（元）', '备注'];
+    const rows = [];
+    rows.push(`<row r="1" ht="23" customHeight="1">${headers.map((h, i) => xlsxTextCell(`${xlsxCol(i + 1)}1`, h, 1)).join('')}</row>`);
+    records.forEach((r, index) => {
+      const rowNum = index + 2;
+      rows.push(`<row r="${rowNum}">` +
+        xlsxTextCell(`A${rowNum}`, r.date, 0) +
+        xlsxTextCell(`B${rowNum}`, r.name, 0) +
+        xlsxNumberCell(`C${rowNum}`, r.quantity, 0) +
+        xlsxNumberCell(`D${rowNum}`, (r.unitCents / 100).toFixed(2), 2) +
+        xlsxNumberCell(`E${rowNum}`, (r.amountCents / 100).toFixed(2), 2) +
+        xlsxTextCell(`F${rowNum}`, r.note || '', 0) +
+        '</row>');
+    });
+    const lastRow = records.length + 1;
+    const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<dimension ref="A1:F${lastRow}"/>
+<sheetViews><sheetView tabSelected="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+<sheetFormatPr defaultRowHeight="18"/>
+<cols><col min="1" max="1" width="14" customWidth="1"/><col min="2" max="2" width="34" customWidth="1"/><col min="3" max="3" width="12" customWidth="1"/><col min="4" max="4" width="15" customWidth="1"/><col min="5" max="5" width="16" customWidth="1"/><col min="6" max="6" width="38" customWidth="1"/></cols>
+<sheetData>${rows.join('')}</sheetData>
+<autoFilter ref="A1:F${lastRow}"/>
+</worksheet>`;
+
+    const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<bookViews><workbookView activeTab="0"/></bookViews>
+<sheets><sheet name="工作记录" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+
+    const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts>
+<fonts count="2"><font><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><color rgb="FF18365D"/><name val="Calibri"/><family val="2"/></font></fonts>
+<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEAF2FF"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+
+    const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+    const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+    const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+    const files = [
+      { name: '[Content_Types].xml', content: contentTypes },
+      { name: '_rels/.rels', content: rootRels },
+      { name: 'xl/workbook.xml', content: workbook },
+      { name: 'xl/_rels/workbook.xml.rels', content: workbookRels },
+      { name: 'xl/styles.xml', content: styles },
+      { name: 'xl/worksheets/sheet1.xml', content: sheet }
+    ];
+    return zipStore(files, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  }
+
+  function xlsxCol(number) {
+    let n = Number(number);
+    let result = '';
+    while (n > 0) {
+      const rem = (n - 1) % 26;
+      result = String.fromCharCode(65 + rem) + result;
+      n = Math.floor((n - 1) / 26);
+    }
+    return result;
+  }
+
+  function xlsxTextCell(ref, text, style = 0) {
+    return `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(text)}</t></is></c>`;
+  }
+
+  function xlsxNumberCell(ref, value, style = 0) {
+    return `<c r="${ref}" s="${style}"><v>${xmlEscape(value)}</v></c>`;
+  }
+
+  function xmlEscape(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;'
+    }[ch]));
+  }
+
+  const CRC_TABLE = (() => {
+    const table = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      table[n] = c >>> 0;
+    }
+    return table;
+  })();
+
+  function crc32(bytes) {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) {
+      crc = CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function zipStore(files, mimeType) {
+    const encoder = new TextEncoder();
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+    const now = new Date();
+    const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2)) & 0xFFFF;
+    const dosDate = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+
+    for (const file of files) {
+      const nameBytes = encoder.encode(file.name);
+      const dataBytes = encoder.encode(file.content);
+      const crc = crc32(dataBytes);
+      const local = new Uint8Array(30 + nameBytes.length + dataBytes.length);
+      const lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034B50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(6, 0x0800, true);
+      lv.setUint16(8, 0, true);
+      lv.setUint16(10, dosTime, true);
+      lv.setUint16(12, dosDate, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, dataBytes.length, true);
+      lv.setUint32(22, dataBytes.length, true);
+      lv.setUint16(26, nameBytes.length, true);
+      lv.setUint16(28, 0, true);
+      local.set(nameBytes, 30);
+      local.set(dataBytes, 30 + nameBytes.length);
+      localParts.push(local);
+
+      const central = new Uint8Array(46 + nameBytes.length);
+      const cv = new DataView(central.buffer);
+      cv.setUint32(0, 0x02014B50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, dosTime, true);
+      cv.setUint16(14, dosDate, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, dataBytes.length, true);
+      cv.setUint32(24, dataBytes.length, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint16(30, 0, true);
+      cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true);
+      cv.setUint16(36, 0, true);
+      cv.setUint32(38, 0, true);
+      cv.setUint32(42, offset, true);
+      central.set(nameBytes, 46);
+      centralParts.push(central);
+
+      offset += local.length;
+    }
+
+    const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054B50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+    ev.setUint16(20, 0, true);
+
+    return new Blob([...localParts, ...centralParts, eocd], { type: mimeType });
+  }
+
+  /* ---------------- JSON backup / restore ---------------- */
+  function buildBackupPayload() {
+    return {
+      app: APP_NAME,
+      dataVersion: DATA_VERSION,
+      backupTime: nowIso(),
+      records: state.records.map(r => ({
+        id: r.id,
+        date: r.date,
+        name: r.name,
+        quantity: r.quantity,
+        unitCents: r.unitCents,
+        amountCents: r.amountCents,
+        note: r.note || '',
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        batchId: r.batchId || null
+      })),
+      tags: state.tags.map(t => ({
+        id: t.id,
+        name: t.name,
+        defaultUnitCents: t.defaultUnitCents == null ? null : t.defaultUnitCents,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt
+      }))
+    };
+  }
+
+  function exportBackup() {
+    try {
+      const payload = buildBackupPayload();
+      const json = JSON.stringify(payload, null, 2);
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+      const now = new Date();
+      const stamp = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}-${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}`;
+      downloadBlob(blob, `工作记录_备份_${stamp}.json`);
+      showToast(`备份已导出：${payload.records.length} 条记录、${payload.tags.length} 个标签。`, { type: 'success' });
+    } catch (err) {
+      console.error(err);
+      showToast(`备份导出失败：${errorMessage(err)}`, { type: 'error' });
+    }
+  }
+
+  function normalizeImportedRecord(raw, index) {
+    if (!raw || typeof raw !== 'object') throw new Error(`第 ${index + 1} 条记录格式不正确。`);
+    const id = typeof raw.id === 'string' ? raw.id.trim() : '';
+    if (!id || id.length > 200) throw new Error(`第 ${index + 1} 条记录缺少有效 ID。`);
+    const date = typeof raw.date === 'string' ? raw.date : '';
+    if (!isValidDateString(date)) throw new Error(`第 ${index + 1} 条记录的日期无效。`);
+    const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+    if (!name) throw new Error(`第 ${index + 1} 条记录名称为空。`);
+    const quantity = Number(raw.quantity);
+    if (!Number.isSafeInteger(quantity) || quantity <= 0) throw new Error(`第 ${index + 1} 条记录数量无效。`);
+    const unitCents = Number(raw.unitCents);
+    if (!Number.isSafeInteger(unitCents) || unitCents < 0) throw new Error(`第 ${index + 1} 条记录单价无效。`);
+    const amountCents = quantity * unitCents;
+    if (!Number.isSafeInteger(amountCents)) throw new Error(`第 ${index + 1} 条记录金额超出范围。`);
+    const note = typeof raw.note === 'string' ? raw.note.trim().slice(0, 300) : '';
+    const fallback = nowIso();
+    const createdAt = typeof raw.createdAt === 'string' && raw.createdAt ? raw.createdAt : fallback;
+    const updatedAt = typeof raw.updatedAt === 'string' && raw.updatedAt ? raw.updatedAt : createdAt;
+    return {
+      id,
+      date,
+      name,
+      quantity,
+      unitCents,
+      amountCents,
+      note,
+      createdAt,
+      updatedAt,
+      batchId: typeof raw.batchId === 'string' ? raw.batchId : null
+    };
+  }
+
+  function normalizeImportedTag(raw, index) {
+    if (!raw || typeof raw !== 'object') throw new Error(`第 ${index + 1} 个标签格式不正确。`);
+    const id = typeof raw.id === 'string' ? raw.id.trim() : '';
+    if (!id || id.length > 200) throw new Error(`第 ${index + 1} 个标签缺少有效 ID。`);
+    const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+    if (!name) throw new Error(`第 ${index + 1} 个标签名称为空。`);
+    let defaultUnitCents = null;
+    if (raw.defaultUnitCents !== null && raw.defaultUnitCents !== undefined) {
+      const value = Number(raw.defaultUnitCents);
+      if (!Number.isSafeInteger(value) || value < 0) throw new Error(`第 ${index + 1} 个标签默认单价无效。`);
+      defaultUnitCents = value;
+    }
+    const fallback = nowIso();
+    const createdAt = typeof raw.createdAt === 'string' && raw.createdAt ? raw.createdAt : fallback;
+    const updatedAt = typeof raw.updatedAt === 'string' && raw.updatedAt ? raw.updatedAt : createdAt;
+    return { id, name, defaultUnitCents, createdAt, updatedAt };
+  }
+
+  function validateBackup(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('这不是有效的备份文件。');
+    const backupVersion = Number(data.dataVersion);
+    if (!Number.isInteger(backupVersion) || backupVersion < 1) {
+      throw new Error('备份文件缺少受支持的数据版本（需要 v1 或 v2）。');
+    }
+    if (backupVersion > DATA_VERSION) {
+      throw new Error('备份文件的数据版本高于当前页面，请更新网页后再恢复。');
+    }
+    if (!Array.isArray(data.records) || !Array.isArray(data.tags)) {
+      throw new Error('备份文件缺少记录或标签数据。');
+    }
+    const records = [];
+    const recordIds = new Set();
+    data.records.forEach((raw, index) => {
+      const record = normalizeImportedRecord(raw, index);
+      if (!recordIds.has(record.id)) {
+        recordIds.add(record.id);
+        records.push(record);
+      }
+    });
+    const tags = [];
+    const tagIds = new Set();
+    data.tags.forEach((raw, index) => {
+      const tag = normalizeImportedTag(raw, index);
+      if (!tagIds.has(tag.id)) {
+        tagIds.add(tag.id);
+        tags.push(tag);
+      }
+    });
+    let backupTimeDisplay = '未提供';
+    if (typeof data.backupTime === 'string' && data.backupTime) {
+      const d = new Date(data.backupTime);
+      if (!Number.isNaN(d.getTime())) {
+        backupTimeDisplay = new Intl.DateTimeFormat('zh-CN', {
+          year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+        }).format(d);
+      }
+    }
+    return { records, tags, backupTimeDisplay };
+  }
+
+  async function handleImportFile(file) {
+    showImportError('');
+    state.pendingImport = null;
+    renderImportPreview();
+    if (!file) return;
+    if (file.size > 30 * 1024 * 1024) {
+      showImportError('备份文件超过 30 MB，无法在此页面中恢复。');
+      return;
+    }
+    try {
+      const text = (await file.text()).replace(/^\uFEFF/, '');
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (_) {
+        throw new Error('备份文件不是有效的 JSON，可能已损坏或选错了文件。');
+      }
+      const parsed = validateBackup(data);
+      state.pendingImport = { ...parsed, fileName: file.name };
+      showImportError('');
+      renderImportPreview();
+    } catch (err) {
+      console.error(err);
+      showImportError(err.message || '读取备份文件失败。');
+      showToast(err.message || '读取备份文件失败。', { type: 'error', duration: 5200 });
+    }
+  }
+
+  async function applyImport(mode) {
+    if (importBusy) return;
+    const pending = state.pendingImport;
+    if (!pending) return;
+    const existingRecordIds = new Set(state.records.map(r => r.id));
+    const existingTagIds = new Set(state.tags.map(t => t.id));
+    const newRecords = pending.records.filter(r => !existingRecordIds.has(r.id));
+    const newTags = pending.tags.filter(t => !existingTagIds.has(t.id));
+    let ok;
+    if (mode === 'overwrite') {
+      ok = await confirmDialog({
+        title: '覆盖恢复全部数据？',
+        message: `将删除当前浏览器中的 ${state.records.length} 条记录和 ${state.tags.length} 个标签，并用备份中的 ${pending.records.length} 条记录、${pending.tags.length} 个标签替换。此操作不可撤销，建议先导出当前数据备份。`,
+        confirmText: '覆盖恢复',
+        cancelText: '取消',
+        danger: true
+      });
+    } else {
+      ok = await confirmDialog({
+        title: '合并导入备份？',
+        message: `将按唯一 ID 去重导入：新增约 ${newRecords.length} 条记录、${newTags.length} 个标签；已有相同 ID 的数据会保留。`,
+        confirmText: '确认合并',
+        cancelText: '取消',
+        danger: false
+      });
+    }
+    if (!ok) return;
+
+    setImportBusy(true);
+    try {
+      if (mode === 'overwrite') {
+        await writeImportData('overwrite', pending.records, pending.tags);
+      } else {
+        await writeImportData('merge', newRecords, newTags);
+      }
+      await readAllData();
+      state.pendingImport = null;
+      showImportError('');
+      renderAll();
+      showToast(
+        mode === 'overwrite'
+          ? `已覆盖恢复 ${pending.records.length} 条记录、${pending.tags.length} 个标签。`
+          : `已合并导入 ${newRecords.length} 条记录、${newTags.length} 个标签。`,
+        { type: 'success', duration: 4600 }
+      );
+    } catch (err) {
+      console.error(err);
+      showImportError(`恢复失败：${errorMessage(err)}`);
+      showToast(`恢复失败：${errorMessage(err)}`, { type: 'error', duration: 5200 });
+    } finally {
+      setImportBusy(false);
+      if (el.importFile) el.importFile.value = '';
+    }
+  }
+
+  /* ---------------- navigation / render all ---------------- */
+  function navigate(view) {
+    if (!['home', 'entry', 'history'].includes(view)) return;
+    state.view = view;
+    $$('.view').forEach(section => {
+      section.hidden = section.getAttribute('data-view') !== view;
+    });
+    $$('.nav-btn[data-nav]').forEach(btn => {
+      const active = btn.getAttribute('data-nav') === view;
+      btn.classList.toggle('active', active);
+      if (active) btn.setAttribute('aria-current', 'page');
+      else btn.removeAttribute('aria-current');
+    });
+    if (view === 'history') renderHistory();
+    if (view === 'entry') {
+      renderEntryAux();
+      el.entryDate.value = el.entryDate.value || todayStr();
+    }
+    const titles = { home: '工作记录 · 本地金额统计', entry: '记一笔 · 工作记录', history: '历史记录 · 工作记录' };
+    document.title = titles[view] || titles.home;
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
+  function renderAll() {
+    renderHome();
+    renderEntryAux();
+    renderHistory();
+    if (isLayerOpen(el.settingsModal)) renderSettings();
+  }
+
+  /* ---------------- events ---------------- */
+  function bindEvents() {
+    document.addEventListener('click', event => {
+      const nav = event.target.closest('[data-nav]');
+      if (nav) {
+        navigate(nav.getAttribute('data-nav'));
+        return;
+      }
+      const editBtn = event.target.closest('[data-edit-record]');
+      if (editBtn) {
+        openEditRecord(editBtn.getAttribute('data-edit-record'));
+        return;
+      }
+      const deleteBtn = event.target.closest('[data-delete-record]');
+      if (deleteBtn) {
+        const record = recordById(deleteBtn.getAttribute('data-delete-record'));
+        if (record) requestDeleteRecord(record);
+        return;
+      }
+    });
+
+    el.settingsBtn.addEventListener('click', () => openSettings(false));
+    el.homeAddBtn.addEventListener('click', () => navigate('entry'));
+    el.homeViewAllBtn.addEventListener('click', () => navigate('history'));
+
+    el.settingsClose.addEventListener('click', () => closeOverlay(el.settingsModal));
+    el.tagClose.addEventListener('click', () => closeOverlay(el.tagModal));
+    el.tagCancel.addEventListener('click', () => closeOverlay(el.tagModal));
+    el.editClose.addEventListener('click', () => closeOverlay(el.editModal));
+    el.editCancel.addEventListener('click', () => closeOverlay(el.editModal));
+    el.confirmCancel.addEventListener('click', () => settleConfirm(false));
+    el.confirmOk.addEventListener('click', () => settleConfirm(true));
+
+    el.settingsModal._onClose = () => { state.settingsOpen = false; };
+    el.tagModal._onClose = () => {
+      editingTagId = null;
+      el.tagFormError.hidden = true;
+      el.tagName.classList.remove('invalid');
+      el.tagPrice.classList.remove('invalid');
+    };
+    el.editModal._onClose = () => {
+      currentEditId = null;
+      el.editError.hidden = true;
+    };
+    el.confirmModal._onClose = () => {
+      const resolver = confirmResolver;
+      confirmResolver = null;
+      if (resolver) resolver(false);
+    };
+
+    $$('.modal-layer').forEach(layer => {
+      layer.addEventListener('click', event => {
+        if (event.target === layer && layer.getAttribute('data-dismissible') === 'true') {
+          closeOverlay(layer);
+        }
+      });
+    });
+
+    document.addEventListener('keydown', event => {
+      if (!openLayers.length) return;
+      const layer = openLayers[openLayers.length - 1];
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeOverlay(layer);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusables = focusableIn(layer);
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (!layer.contains(document.activeElement)) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
+
+    el.historyTabs.addEventListener('click', event => {
+      const btn = event.target.closest('[data-history-mode]');
+      if (!btn) return;
+      state.historyMode = btn.getAttribute('data-history-mode');
+      renderHistory();
+    });
+
+    el.historyCalendarPane.addEventListener('click', event => {
+      const reportBtn = event.target.closest('[data-report-mode]');
+      if (reportBtn) {
+        const mode = reportBtn.getAttribute('data-report-mode');
+        if (mode === 'month' || mode === 'year') {
+          state.reportMode = mode;
+          renderSummaryReport();
+        }
+        return;
+      }
+      const calAction = event.target.closest('[data-cal]');
+      if (calAction) {
+        const action = calAction.getAttribute('data-cal');
+        if (action === 'prev') changeCalendarMonth(-1);
+        else if (action === 'next') changeCalendarMonth(1);
+        else if (action === 'today') goToCurrentMonth();
+        return;
+      }
+      const dayBtn = event.target.closest('[data-cal-date]');
+      if (dayBtn) {
+        state.selectedDate = dayBtn.getAttribute('data-cal-date');
+        renderCalendar();
+        scrollToDayDetail();
+      }
+    });
+
+    el.historyCalendarPane.addEventListener('change', event => {
+      if (!event.target) return;
+      if (event.target.id === 'calendarYear') {
+        const year = Number.parseInt(event.target.value, 10);
+        if (!Number.isInteger(year) || year < 1900 || year > 9999) return;
+        state.calYear = year;
+        state.selectedDate = null;
+        renderCalendar();
+      } else if (event.target.id === 'calendarMonth') {
+        const month = Number.parseInt(event.target.value, 10);
+        if (!Number.isInteger(month) || month < 1 || month > 12) return;
+        state.calMonth = month - 1;
+        state.selectedDate = null;
+        renderCalendar();
+      }
+    });
+
+    el.historyNamePane.addEventListener('input', event => {
+      if (event.target && event.target.id === 'nameSearch') {
+        state.nameQuery = event.target.value;
+        renderNameListItems();
+      }
+    });
+
+    el.historyNamePane.addEventListener('change', event => {
+      if (event.target && event.target.id === 'nameMonthFilter' && state.nameDetail) {
+        state.nameDetail.month = event.target.value;
+        renderHistory();
+      }
+    });
+
+    el.historyNamePane.addEventListener('click', event => {
+      const groupBtn = event.target.closest('[data-group-index]');
+      if (groupBtn) {
+        const index = Number(groupBtn.getAttribute('data-group-index'));
+        const group = state.visibleGroups[index];
+        if (group) {
+          state.nameDetail = { name: group.name, month: 'all' };
+          state.nameQuery = '';
+          renderHistory();
+        }
+        return;
+      }
+      if (event.target.closest('#nameBackBtn')) {
+        state.nameDetail = null;
+        renderHistory();
+      }
+    });
+
+    el.entryDate.addEventListener('input', () => {
+      el.entryDate.classList.remove('invalid');
+      el.dateError.hidden = true;
+    });
+    el.todayBtn.addEventListener('click', () => {
+      el.entryDate.value = todayStr();
+      el.entryDate.classList.remove('invalid');
+      el.dateError.hidden = true;
+    });
+
+    el.entryForm.addEventListener('submit', saveEntry);
+
+    el.entryRows.addEventListener('input', event => {
+      const rowEl = event.target.closest('[data-row-uid]');
+      if (!rowEl || !event.target.matches('[data-field]')) return;
+      const row = getRowByUid(rowEl.getAttribute('data-row-uid'));
+      if (!row) return;
+      const field = event.target.getAttribute('data-field');
+      row[field] = event.target.value;
+      row.error = null;
+      rowEl.classList.remove('has-error');
+      const err = rowEl.querySelector('.row-error');
+      if (err) { err.textContent = ''; err.hidden = true; }
+      const input = event.target;
+      input.classList.remove('invalid');
+      setActiveRow(row.uid);
+      updateRowSubtotal(row);
+    });
+
+    el.entryRows.addEventListener('focusin', event => {
+      const rowEl = event.target.closest('[data-row-uid]');
+      if (rowEl) setActiveRow(rowEl.getAttribute('data-row-uid'));
+    });
+
+    el.entryRows.addEventListener('blur', event => {
+      if (!event.target.matches('[data-field]')) return;
+      const rowEl = event.target.closest('[data-row-uid]');
+      if (!rowEl) return;
+      const row = getRowByUid(rowEl.getAttribute('data-row-uid'));
+      if (!row) return;
+      const field = event.target.getAttribute('data-field');
+      if (field === 'unit') {
+        const parsed = parseUnitPrice(row.unit);
+        if (parsed.ok) {
+          row.unit = priceInputValue(parsed.value);
+          event.target.value = row.unit;
+        }
+      } else if (field === 'qty') {
+        const parsed = parsePositiveInt(row.qty);
+        if (parsed.ok) {
+          row.qty = String(parsed.value);
+          event.target.value = row.qty;
+        }
+      } else if (field === 'name') {
+        row.name = row.name.trim();
+        event.target.value = row.name;
+      } else if (field === 'note') {
+        row.note = String(row.note || '').trim();
+        event.target.value = row.note;
+      }
+      updateRowSubtotal(row);
+    }, true);
+
+    el.entryRows.addEventListener('click', event => {
+      const actionBtn = event.target.closest('[data-action]');
+      if (!actionBtn) return;
+      const rowEl = actionBtn.closest('[data-row-uid]');
+      if (!rowEl) return;
+      const rowUid = rowEl.getAttribute('data-row-uid');
+      const index = entry.rows.findIndex(r => r.uid === rowUid);
+      if (index < 0) return;
+      const action = actionBtn.getAttribute('data-action');
+      if (action === 'remove') {
+        if (entry.rows.length === 1) {
+          entry.rows = [makeEmptyRow()];
+          entry.activeUid = entry.rows[0].uid;
+          renderEntryRows(entry.rows[0].uid, 'name');
+        } else {
+          entry.rows.splice(index, 1);
+          if (entry.activeUid === rowUid) {
+            const next = entry.rows[Math.min(index, entry.rows.length - 1)];
+            entry.activeUid = next.uid;
+          }
+          renderEntryRows(entry.activeUid, 'name');
+        }
+      } else if (action === 'copy') {
+        const row = entry.rows[index];
+        if (index === 0) {
+          const latest = latestSavedRecord();
+          if (!latest) return;
+          copyIntoRow(row, latest);
+        } else {
+          copyIntoRow(row, entry.rows[index - 1]);
+        }
+      }
+    });
+
+    function addEmptyRow() {
+      const row = makeEmptyRow();
+      entry.rows.push(row);
+      entry.activeUid = row.uid;
+      renderEntryRows(row.uid, 'name');
+    }
+    el.addRowBtn.addEventListener('click', addEmptyRow);
+    el.addRowBottomBtn.addEventListener('click', addEmptyRow);
+
+    el.tagChips.addEventListener('click', event => {
+      const chip = event.target.closest('[data-tag-id]');
+      if (!chip) return;
+      const tag = tagById(chip.getAttribute('data-tag-id'));
+      if (!tag) return;
+      let price = tag.defaultUnitCents;
+      if (price == null) price = latestUnitForName(tag.name);
+      fillActiveRow(tag.name, price);
+    });
+
+    el.recentChips.addEventListener('click', event => {
+      const chip = event.target.closest('[data-recent-index]');
+      if (!chip) return;
+      const index = Number(chip.getAttribute('data-recent-index'));
+      const item = state.recentNames[index];
+      if (item) fillActiveRow(item.name, item.unitCents);
+    });
+
+    el.manageTagsBtn.addEventListener('click', () => openSettings(true));
+    el.settingsAddTag.addEventListener('click', () => openTagEditor(null));
+
+    el.settingsBody.addEventListener('click', event => {
+      const editTagBtn = event.target.closest('[data-edit-tag]');
+      if (editTagBtn) {
+        openTagEditor(editTagBtn.getAttribute('data-edit-tag'));
+        return;
+      }
+      const deleteTagBtn = event.target.closest('[data-delete-tag]');
+      if (deleteTagBtn) {
+        const tag = tagById(deleteTagBtn.getAttribute('data-delete-tag'));
+        if (tag) requestDeleteTag(tag);
+        return;
+      }
+      const importBtn = event.target.closest('[data-import-mode]');
+      if (importBtn) {
+        applyImport(importBtn.getAttribute('data-import-mode'));
+      }
+    });
+
+    el.exportScope.addEventListener('click', event => {
+      const btn = event.target.closest('[data-export-scope]');
+      if (!btn) return;
+      state.exportScope = btn.getAttribute('data-export-scope');
+      renderSettings();
+    });
+
+    el.exportXlsx.addEventListener('click', exportXlsx);
+    el.exportCsv.addEventListener('click', exportCsv);
+    el.backupJsonBtn.addEventListener('click', exportBackup);
+
+    el.importTrigger.addEventListener('click', () => {
+      el.importFile.value = '';
+      el.importFile.click();
+    });
+    el.importFile.addEventListener('change', () => {
+      const file = el.importFile.files && el.importFile.files[0];
+      handleImportFile(file || null);
+    });
+
+    el.editForm.addEventListener('submit', saveEdit);
+    el.editDate.addEventListener('input', () => {
+      el.editDate.classList.remove('invalid');
+      el.editError.hidden = true;
+    });
+    el.editName.addEventListener('input', () => {
+      el.editName.classList.remove('invalid');
+      el.editError.hidden = true;
+    });
+    el.editQty.addEventListener('input', () => {
+      el.editQty.classList.remove('invalid');
+      el.editError.hidden = true;
+      updateEditAmount();
+    });
+    el.editPrice.addEventListener('input', () => {
+      el.editPrice.classList.remove('invalid');
+      el.editError.hidden = true;
+      updateEditAmount();
+    });
+    el.editNote.addEventListener('input', () => {
+      el.editError.hidden = true;
+    });
+    el.editDeleteBtn.addEventListener('click', () => {
+      const record = recordById(currentEditId);
+      if (record) requestDeleteRecord(record, el.editModal);
+    });
+
+    el.tagForm.addEventListener('submit', saveTag);
+    el.tagName.addEventListener('input', () => {
+      el.tagName.classList.remove('invalid');
+      el.tagFormError.hidden = true;
+    });
+    el.tagPrice.addEventListener('input', () => {
+      el.tagPrice.classList.remove('invalid');
+      el.tagFormError.hidden = true;
+    });
+
+    el.fatalRetry.addEventListener('click', () => window.location.reload());
+  }
+
+  function cacheElements() {
+    const ids = [
+      'bootScreen', 'fatalScreen', 'fatalMessage', 'fatalRetry', 'appRoot',
+      'settingsBtn', 'view-home', 'view-entry', 'view-history',
+      'homeDateLabel', 'statTodayQty', 'statTodayAmount', 'statMonthQty', 'statMonthAmount',
+      'homeAddBtn', 'homeRecentList', 'homeRecentCount', 'homeViewAllBtn',
+      'entryForm', 'entryDate', 'todayBtn', 'dateError', 'manageTagsBtn', 'tagChips', 'recentChips',
+      'entryRows', 'entryRowsCount', 'addRowBtn', 'addRowBottomBtn',
+      'entryTotalQty', 'entryTotalAmount', 'saveEntryBtn', 'saveEntryLabel',
+      'historyTabs', 'historyCalendarPane', 'historyNamePane', 'chartCard', 'chartRange', 'chartBars',
+      'settingsModal', 'settingsClose', 'settingsBody', 'settingsTotalCount', 'settingsTagsSection',
+      'settingsAddTag', 'settingsTagList', 'exportScope', 'exportMonthWrap', 'exportMonth',
+      'exportXlsx', 'exportCsv', 'backupJsonBtn', 'importTrigger', 'importFile',
+      'importError', 'importPreview',
+      'tagModal', 'tagModalTitle', 'tagClose', 'tagForm', 'tagName', 'tagPrice',
+      'tagFormError', 'tagCancel', 'tagSaveBtn',
+      'editModal', 'editClose', 'editForm', 'editDate', 'editName', 'editQty', 'editPrice',
+      'editNote', 'editAmount', 'editError', 'editCancel', 'editSaveBtn', 'editDeleteBtn',
+      'confirmModal', 'confirmIcon', 'confirmTitle', 'confirmMessage', 'confirmCancel', 'confirmOk',
+      'toastWrap'
+    ];
+    for (const id of ids) el[id] = document.getElementById(id);
+  }
+
+  function showFatal(message) {
+    if (el.bootScreen) el.bootScreen.hidden = true;
+    if (el.fatalScreen) el.fatalScreen.hidden = false;
+    if (el.fatalMessage) el.fatalMessage.textContent = message;
+  }
+
+  async function init() {
+    cacheElements();
+    bindEvents();
+
+    const now = new Date();
+    state.calYear = now.getFullYear();
+    state.calMonth = now.getMonth();
+    state.selectedDate = todayStr();
+    el.entryDate.value = todayStr();
+    entry.rows = [makeEmptyRow()];
+    entry.activeUid = entry.rows[0].uid;
+    renderEntryRows();
+    renderHome();
+    renderChart();
+
+    try {
+      db = await openDatabase();
+      await readAllData();
+      renderAll();
+      navigate('home');
+      if (el.bootScreen) el.bootScreen.hidden = true;
+      if (navigator.storage && typeof navigator.storage.persist === 'function') {
+        try { navigator.storage.persist().catch(() => {}); } catch (_) { /* ignore */ }
+      }
+    } catch (err) {
+      console.error(err);
+      showFatal(errorMessage(err));
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
